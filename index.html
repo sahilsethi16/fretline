@@ -472,6 +472,12 @@ ul.mvsongs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .editor textarea{font:14px/1.6 var(--f-mono);min-height:120px;background:var(--surface-2)}
 .legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:5px 16px;font-size:13px;color:var(--muted)}
 .legend code{font-size:12px}
+.editor textarea.pastebox{font:13px/1.35 var(--f-mono);min-height:170px;white-space:pre;overflow-x:auto;tab-size:4}
+.paste{border-color:color-mix(in oklab,var(--lead) 45%,var(--line))}
+.srcline{display:block;margin-top:6px;font-size:13px;color:var(--muted);font-family:var(--f-mono)}
+.factrow{display:flex;flex-wrap:wrap;gap:8px 22px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
+.factrow span{display:grid;gap:2px;font-size:14px}
+.factrow b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
 
 /* ---------- progress ---------- */
 .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
@@ -880,77 +886,82 @@ const SONGS = [
 ];
 
 // Lead library. tech = techniques the riff needs; it appears on your path once you have learned them.
+// Side B. kind: 'etude' (original exercise, full tab), 'tune' (public-domain melody, full tab),
+// 'song' (copyrighted: a link to a tab, plus what to focus on). tech sets the movement; mv overrides it upward.
 const LEAD = [
-  {id:'under-pressure', tech:['picked'], title:'Under Pressure', artist:'Queen & David Bowie', genre:'Classic rock', riff:'under-pressure', tab:'https://tabs.ultimate-guitar.com/tab/queen/under-pressure-tabs-4077892', site:'Ultimate Guitar', tip:'Learn only the bass riff at the top. The guitar riff further down has a hammer-on.'},
-  {id:'peter-gunn', tech:['picked'], title:'Peter Gunn Theme', artist:'Henry Mancini / Blues Brothers', genre:'Classic rock', riff:'peter-gunn', tab:'https://tabs.ultimate-guitar.com/tab/henry-mancini/peter-gunn-theme-tabs-2347675', site:'Ultimate Guitar', tip:'Low E and A strings only.'},
-  {id:'seven-nation-army', tech:['picked'], title:'Seven Nation Army', artist:'The White Stripes', genre:'Indie', riff:'seven-nation-army', tab:'https://www.songsterr.com/a/wsa/white-stripes-seven-nation-army-tab-s265', site:'Songsterr', tip:'The riff twice, then the section where the band pounds G and then A on the low E string (frets 3 and 5), then the riff again. If a version shows a slide at the end, pick the note instead.'},
-  {id:'smoke-on-the-water', tech:['picked'], title:'Smoke on the Water', artist:'Deep Purple', genre:'Classic rock', riff:'smoke-on-the-water', tab:'https://tabs.ultimate-guitar.com/tab/deep-purple/smoke-on-the-water-tabs-57672', site:'Ultimate Guitar', tip:'The riff twice on the G string, then the chorus: two-note shapes, C5 (A string 3 + D string 5) and A\u266d5 (low E 4 + A string 6). Let each one ring. The chorus rhythm is approximate.'},
-  {id:'kal-ho-naa-ho', free:true, check:'ok', tech:['picked'], title:'Kal Ho Naa Ho', artist:'Sonu Nigam', genre:'Bollywood', riff:'kal-ho-naa-ho', tab:'https://www.acousterr.com/tab/kal-ho-na-ho-original-scale', site:'Acousterr', tip:'Notes checked against the sargam notation: they match. The tab gives no rhythm, so use Follow mode and take the timing from the song.'},
-  {id:'tera-mujhse', free:true, check:'ok', tech:['picked'], title:'Tera Mujhse Hai Pehle Ka Naata Koi', artist:'Kishore Kumar', genre:'Bollywood', riff:'tera-mujhse', tab:'https://tabs.ultimate-guitar.com/tab/misc-soundtrack/aa-gale-lag-jaa-tera-mujhse-hai-pehle-ka-naata-koi-tabs-3870893', site:'Ultimate Guitar', tip:'Notes checked against the sargam notation: they match (a couple of passing notes are simplified). Use Follow mode and take the rhythm from the song.'},
-  {id:'come-as-you-are', tech:['picked'], title:'Come As You Are', artist:'Nirvana', genre:'Alt rock', riff:'come-as-you-are', tab:'https://tabs.ultimate-guitar.com/tab/nirvana/come-as-you-are-tabs-2851655', site:'Ultimate Guitar', tip:'The intro and verse riff, four times through. On the repeats, skip the first note. Standard tuning version; the record is tuned down a whole step.'},
-  {id:'pretty-woman', tech:['picked'], title:'Oh, Pretty Woman', artist:'Roy Orbison', genre:'Classic rock', riff:'pretty-woman', tab:'https://tabs.ultimate-guitar.com/tab/roy-orbison/oh-pretty-woman-tabs-767506', site:'Ultimate Guitar', tip:'Only the opening riff; the rest switches to chords.'},
-  {id:'nothing-else-matters', tech:['picked'], title:'Nothing Else Matters (opening)', artist:'Metallica', genre:'Classic rock', riff:'nothing-else-matters', tab:'https://tabs.ultimate-guitar.com/tab/metallica/nothing-else-matters-tabs-30154', site:'Ultimate Guitar', tip:'Open strings only. Stop after the opening pattern; the next lines add pull-offs (Movement III).'},
-  {id:'tum-hi-ho', tech:['picked'], free:true, check:'fixed', title:'Tum Hi Ho (piano intro)', artist:'Arijit Singh (Aashiqui 2)', genre:'Bollywood', riff:'tum-hi-ho', tab:'https://www.songsterr.com/a/wsa/arijit-singh-tum-hi-ho-tab-s434423', site:'Songsterr (real rhythm, plays with the original audio)', tip:'The old version was a different, simplified part and did not match the melody. This is the piano hook from the sargam notation, written in A minor; the record is in F minor, so put a capo on fret 8 (or use the Key control) to play along.'},
-  // technique songs: appear once the technique is learned
-  // batch 2: a step up — longer lines, string crossing, picking through chords
-  {id:'satisfaction', tech:['picked'], set:2, title:'(I Can\u2019t Get No) Satisfaction', artist:'The Rolling Stones', genre:'Classic rock', riff:'satisfaction', tab:'https://www.guitartabsexplorer.com/rolling-stones/satisfaction-tab', site:'GuitarTabsExplorer', tip:'All on the A string, frets 2, 4 and 5. The tab marks two optional slides; pick every note instead.'},
-  {id:'bites-the-dust', tech:['picked'], set:2, title:'Another One Bites the Dust (riff)', artist:'Queen', genre:'Classic rock', riff:'bites-the-dust', tab:'https://tabs.ultimate-guitar.com/tab/queen/another-one-bites-the-dust-tabs-80603', site:'Ultimate Guitar', tip:'The bass line, on the low E string. The rests are the groove: stop the string dead after each short note.'},
-  {id:'rising-sun', tech:['picked'], set:2, title:'House of the Rising Sun (arpeggios)', artist:'The Animals', genre:'Classic rock', riff:'rising-sun', tab:'https://appliedguitartheory.com/lessons/riff-breakdown-the-house-of-the-rising-sun/', site:'Applied Guitar Theory', tip:'The whole 16-bar verse (Am C D F, Am C E E, Am C D F, Am E Am E). Hold each chord and pick through it, in 6/8. Am, C, D and E you know; for F use the small four-string shape (frets 3 2 1 1 on the top four strings), or Fmaj7 (3 2 1 0) to start.'},
-  {id:'aanewala-pal', free:true, check:'ok', tech:['picked'], set:2, title:'Aanewala Pal Jaanewala Hai', artist:'Kishore Kumar (Golmaal)', genre:'Bollywood', riff:'aanewala-pal', tab:'https://www.acousterr.com/tab/aanewala-pal-jaanewala-hai', site:'Acousterr', tip:'This is the hummed intro. Notes checked against the sargam notation: they match. Use Follow mode and take the rhythm from the song.'},
-  {id:'yeh-shaam', tech:['picked'], set:2, free:true, check:'ok', title:'Yeh Shaam Mastani', artist:'Kishore Kumar (Kati Patang)', genre:'Bollywood', riff:'yeh-shaam', tab:'https://www.guitartabsexplorer.com/misc-soundtrack/kati-patang---yeh-sham-mastani-tab', site:'GuitarTabsExplorer', tip:'The whistled intro and the first lines. The tab and the sargam notation agree on every note. Use Follow mode for the rhythm.'},
-  // Indian artists and bands (non-film and artist-led songs)
-  {id:'pehla-nasha-lead', tech:['picked'], set:2, free:true, check:'ok', title:'Pehla Nasha', artist:'Udit Narayan & Sadhana Sargam (Jo Jeeta Wohi Sikandar)', genre:'Bollywood', riff:'pehla-nasha-lead', tab:'https://notesandsargam.com/pehla-nasha-pehla-khumar/', site:'Notes & Sargam', tip:'The opening lines, written in F to match the record (the same key as the chords on Side A). Use Follow mode for the rhythm.'},
-  // fresh batch: checked against sargam notation and/or tabs
-  {id:'ajeeb-dastan', tech:['picked'], set:3, free:true, check:'ok', title:'Ajeeb Dastan Hai Yeh', artist:'Lata Mangeshkar (Dil Apna Aur Preet Parai)', genre:'Bollywood', riff:'ajeeb-dastan', tab:'https://www.acousterr.com/tab/ajeeb-dastan-hai-yeh', site:'Acousterr', tip:'The playful guitar intro riff (from the sargam notation), then the vocal melody. The Acousterr tab and the sargam agree note for note. Written in A minor; use the Key control to match the record.'},
-  {id:'main-agar-kahoon', tech:['picked'], set:3, free:true, check:'single', title:'Main Agar Kahoon', artist:'Sonu Nigam & Shreya Ghoshal (Om Shanti Om)', genre:'Bollywood', riff:'main-agar-kahoon', tab:'https://www.acousterr.com/tab/main-agar-kahoon', site:'Acousterr (ukulele tab, converted)', tip:'The intro: a two-note figure that steps down the high e string (frets 9 down to 1), then onto the B string. Converted from a ukulele tab at the same pitch. Alternate picking keeps the back-and-forth even.'},
-  {id:'mitwa', tech:['picked'], set:3, free:true, check:'single', title:'Mitwa (intro)', artist:'Shafqat Amanat Ali (Kabhi Alvida Naa Kehna)', genre:'Bollywood', riff:'mitwa', tab:'https://www.acousterr.com/tab/mitwa', site:'Acousterr', tip:'Fretted notes high on the D and G strings mixed with the open B and high e, so the notes ring into each other. Loop it, and let every note ring.'},
-  {id:'gerua', tech:['picked'], set:3, free:true, check:'ok', title:'Gerua (hook)', artist:'Arijit Singh & Antara Mitra (Dilwale)', genre:'Bollywood', riff:'gerua', tab:'https://notesandsargam.com/gerua-dhoop-se-nikal-ke/', site:'Notes & Sargam', tip:'The falling melody from the start of the song: the same small shape repeated one step lower each time. Key not confirmed; use the Key control to match the record.'},
-  {id:'hawayein', tech:['picked'], set:3, free:true, check:'ok', title:'Hawayein', artist:'Arijit Singh (Jab Harry Met Sejal)', genre:'Bollywood', riff:'hawayein', tab:'https://notesandsargam.com/hawayein-le-jaye-jane-kaha/', site:'Notes & Sargam', tip:'The intro hook, then the opening lines. Capo 3 matches the notation\u2019s key (A\u266f).'},
-  {id:'dil-diyan-gallan', tech:['picked'], set:3, free:true, check:'ok', title:'Dil Diyan Gallan', artist:'Atif Aslam (Tiger Zinda Hai)', genre:'Bollywood', riff:'dil-diyan-gallan', tab:'https://notesandsargam.com/dil-diyan-gallan/', site:'Notes & Sargam', tip:'The opening lines, low on the A and D strings, in D (the key given with the notation).'},
-  {id:'pal-pal-dil', tech:['picked'], set:3, check:'ok', title:'Pal Pal Dil Ke Paas', artist:'Kishore Kumar (Blackmail)', genre:'Bollywood', riff:'pal-pal-dil', tab:'https://www.songsterr.com/a/wsa/kishore-kumar-pal-pal-dil-ke-paas-tab-s210033', site:'Songsterr', tip:'This notation marks how long each note is held, so the rhythm here is close to the song (long held notes, quick turns). Key not confirmed; use the Key control.'},
-  {id:'rock-on', tech:['power','slide'], title:'Rock On!! (intro)', artist:'Farhan Akhtar (Rock On!!)', genre:'Bollywood', riff:'rock-on', tab:'https://www.acousterr.com/tab/rock-on', site:'Acousterr', tip:'Power chords on the low E and A strings, a slide between them, and muted hits. Joins your path with Movement III, alongside power chords and slides.'},
-  {id:'yaaron', tech:['picked'], set:2, free:true, check:'ok', title:'Yaaron', artist:'KK (album: Pal)', genre:'Indian pop', riff:'yaaron', tab:'https://notesandsargam.com/yaaron-dosti-badi-hi-haseen-hai/', site:'Notes & Sargam', tip:'The guitar intro line, then the chorus melody, from the sargam notation in F (the song\u2019s key per that page). A fingerpicked intro tab is on Ultimate Guitar too.'},
-  {id:'pal-kk', tech:['picked'], set:2, free:true, check:'ok', title:'Pal (Hum Rahe Ya Na Rahe Kal)', artist:'KK (album: Pal)', genre:'Indian pop', riff:'pal-kk', tab:'https://notesandsargam.com/hum-rahe-ya-na-rahe-kal/', site:'Notes & Sargam', tip:'The opening lines on the B and high e strings. I couldn\u2019t confirm the record\u2019s key, so use the Key control until it lines up with the song.'},
-  {id:'moh-moh', tech:['picked'], set:2, free:true, check:'ok', title:'Moh Moh Ke Dhaage', artist:'Papon (Dum Laga Ke Haisha)', genre:'Indian pop', riff:'moh-moh', tab:'https://notesandsargam.com/ye-moh-moh-ke-dhaage/', site:'Notes & Sargam', tip:'The first lines of the song. Key not confirmed: use the Key control to match the record.'},
-  {id:'do-i-wanna-know', tech:['hammer','slide'], title:'Do I Wanna Know?', artist:'Arctic Monkeys', genre:'Indie', riff:null, tab:'https://tabs.ultimate-guitar.com/tab/arctic-monkeys/do-i-wanna-know-tabs-1485512', site:'Ultimate Guitar', tip:'The intro riff: hammer-ons on the low strings and one slide.'},
-  {id:'iron-man', tech:['slide'], title:'Iron Man', artist:'Black Sabbath', genre:'Classic rock', riff:null, tab:'https://tabs.ultimate-guitar.com/tab/black-sabbath/iron-man-tabs-16899', site:'Ultimate Guitar', tip:'Two-note shapes that slide between positions.'},
-  {id:'money', tech:['hammer','pull'], title:'Money', artist:'Pink Floyd', genre:'Classic rock', riff:null, tab:'https://tabs.ultimate-guitar.com/tab/pink-floyd/money-tabs-533189', site:'Ultimate Guitar', tip:'The bass riff, played on guitar. It is in 7/4, so count seven beats per loop.'},
-  {id:'sweet-child-intro', tech:['picked'], mv:4, title:'Sweet Child O’ Mine (intro)', artist:'Guns N’ Roses', genre:'Classic rock', riff:null, tab:'https://guitaralliance.net/2322-3/', site:'Guitar Alliance', tip:'Plain notes, but a big stretch with string skipping. The record is tuned down a half step.'},
-  {id:'knockin-solo', tech:['bend','slide'], title:'Knockin’ on Heaven’s Door (GNR solo)', artist:'Guns N’ Roses', genre:'Classic rock', riff:null, tab:'https://appliedguitartheory.com/lessons/knockin-on-heavens-door-guitar-solo-guns-n-roses/', site:'Applied Guitar Theory', tip:'Every note is from the G major scale. Frets 11 to 20, so an electric is easier.'},
-  {id:'another-brick-solo', tech:['bend','pull'], title:'Another Brick in the Wall Pt. 2 (solo)', artist:'Pink Floyd', genre:'Classic rock', riff:null, tab:'https://tabs.ultimate-guitar.com/tab/pink-floyd/another-brick-in-the-wall-part-2-tabs-46275', site:'Ultimate Guitar', tip:'D minor blues scale around frets 10 to 13.'},
-  {id:'wywh-intro', tech:['hammer','pull','slide','bend','vibrato'], goal:true, title:'Wish You Were Here (intro lick)', artist:'Pink Floyd', genre:'Classic rock', riff:null, tab:'https://tabs.ultimate-guitar.com/tab/pink-floyd/wish-you-were-here-tabs-984061', site:'Ultimate Guitar', tip:'The goal: every core technique in one short, slow lick.'},
+  {"id": "pent-threes", "kind": "etude", "tech": ["picked"], "title": "Pentatonic in threes", "artist": "Fretline étude", "genre": "Technique", "riff": "pent-threes", "key": "A minor pentatonic", "tip": "A minor pentatonic, box 1. Groups of three in triplets, up and back down. Strict alternate picking (down-up-down, then up-down-up): the accent moves around, which is the point. Learn the box shape first, then the pattern. Goal: 120 bpm.", "goalBpm": 120},
+  {"id": "andalusian-arps", "kind": "etude", "tech": ["picked"], "title": "Am–G–F–E arpeggios", "artist": "Fretline étude", "genre": "Technique", "riff": "andalusian-arps", "key": "A minor", "tip": "Am, G, F, E picked one string at a time, up and back. Hold each full chord shape and let the notes ring into each other. The F is the four-string shape from Movement III (frets 3-2-1-1 on the top four strings).", "goalBpm": 120, "mv": 3},
+  {"id": "minor-arps-68", "kind": "etude", "tech": ["picked"], "title": "6/8 arpeggios: Am, C, D, F", "artist": "Fretline étude", "genre": "Technique", "riff": "minor-arps-68", "key": "A minor", "tip": "The Am-C-D-F-Am-C-E progression as 6/8 arpeggios. Count 1-2-3-4-5-6 with the accent on 1 and 4. Hold the chord, do not lift the fingers between notes.", "goalBpm": 100, "mv": 3},
+  {"id": "turkey-straw", "kind": "tune", "tech": ["picked"], "title": "Turkey in the Straw", "artist": "Traditional fiddle tune", "genre": "Fiddle tune", "riff": "turkey-straw", "goalBpm": 100, "key": "G major", "src": "Ryan's Mammoth Collection (1883)", "tip": "A fiddle tune in G, mostly in open position. Sixteenth notes the whole way, so it trains even alternate picking across strings. Learn it in two-bar pieces."},
+  {"id": "arkansas", "kind": "tune", "tech": ["picked"], "title": "Arkansas Traveller", "artist": "Traditional fiddle tune", "genre": "Fiddle tune", "riff": "arkansas", "goalBpm": 104, "key": "D major", "src": "Ryan's Mammoth Collection (1883)", "tip": "In D. Starts with a quick triplet pickup, then runs of sixteenths that cross strings constantly. Keep the pick moving down-up even when you change strings."},
+  {"id": "temperance", "kind": "tune", "tech": ["picked"], "title": "Temperance Reel", "artist": "Traditional fiddle tune", "genre": "Fiddle tune", "riff": "temperance", "goalBpm": 104, "key": "G major", "src": "Ryan's Mammoth Collection (1883)", "tip": "A reel in G. Long, even runs that climb to the top of open position. Practise the B part on its own; it sits higher and has the awkward string crossings."},
+  {"id": "pent-sixes", "kind": "etude", "tech": ["picked"], "title": "Pentatonic sixes", "artist": "Fretline étude", "genre": "Technique", "riff": "pent-sixes", "key": "A minor pentatonic", "tip": "Sixteenth-note triplets: six notes a beat, two strings at a time, walking down through the box. This is the classic rock speed pattern. Keep the picking motion small and from the wrist. Goal: 90 bpm, which is fast.", "goalBpm": 90},
+  {"id": "sixths-c", "kind": "etude", "tech": ["picked"], "title": "Soul sixths in C", "artist": "Fretline étude", "genre": "Technique", "riff": "sixths-c", "key": "C major", "tip": "Soul-style sixths in C on the G and high e strings, skipping the B string. Pick the G string and pluck the e with your middle finger, or mute the B with the underside of your fretting finger. Think Curtis Mayfield or Steve Cropper: slow, smooth slides between shapes.", "goalBpm": 76},
+  {"id": "devils-dream", "kind": "tune", "tech": ["picked"], "title": "Devil's Dream", "artist": "Traditional fiddle tune", "genre": "Fiddle tune", "riff": "devils-dream", "goalBpm": 108, "key": "A major", "src": "Ryan's Mammoth Collection (1883)", "tip": "In A. The famous string-crossing figure: a note on one string, then a pedal note on the next, over and over. Use strict alternate picking; it will feel backwards at first."},
+  {"id": "liverpool", "kind": "tune", "tech": ["picked"], "title": "Liverpool Hornpipe", "artist": "Traditional fiddle tune", "genre": "Fiddle tune", "riff": "liverpool", "goalBpm": 90, "key": "D major", "src": "Ryan's Mammoth Collection (1883)", "tip": "A hornpipe in D: arpeggio shapes that jump up the strings. Fretting hand stays in one position; let the picking hand do the work."},
+  {"id": "flowers", "kind": "tune", "tech": ["picked"], "title": "Flowers of Edinburgh", "artist": "Traditional fiddle tune", "genre": "Fiddle tune", "riff": "flowers", "goalBpm": 110, "key": "G major", "src": "Ryan's Mammoth Collection (1883)", "tip": "A reel in G with a triplet turn in the first bar. Played in cut time, so two strong beats a bar."},
+  {"id": "donna-mobile", "kind": "tune", "tech": ["picked"], "title": "La donna è mobile", "artist": "Giuseppe Verdi", "genre": "Opera", "riff": "donna-mobile", "goalBpm": 75, "key": "B♭ major", "src": "Verdi, Rigoletto (1851)", "tip": "The tune from Verdi’s Rigoletto, played up the neck at frets 8 to 13 so you learn to read and move outside open position. Light and bouncy, in 3/8."},
+  {"id": "hammer-ladder", "kind": "etude", "tech": ["hammer"], "title": "Hammer-on ladder", "artist": "Fretline étude", "genre": "Technique", "riff": "hammer-ladder", "key": "A minor pentatonic", "tip": "Pick once, hammer once, on every string of the box, up and back. Both notes should be the same volume; if the hammered note is quiet, hit closer to the fret with the fingertip. Ring finger on the 7s, pinky on the 8s.", "goalBpm": 110},
+  {"id": "legato-triplets", "kind": "etude", "tech": ["hammer", "pull"], "title": "Rock triplets: hammer and pull", "artist": "Fretline étude", "genre": "Technique", "riff": "legato-triplets", "key": "A minor pentatonic", "tip": "The rolling triplet behind half the rock solos ever played: pull-off, then pick the next string. Three notes, one pick stroke for two of them. Accent the first of each three. Goal: 120 bpm, clean.", "goalBpm": 120},
+  {"id": "box-slides", "kind": "etude", "tech": ["slide", "pull"], "title": "Sliding between pentatonic boxes", "artist": "Fretline étude", "genre": "Technique", "riff": "box-slides", "key": "A minor pentatonic", "tip": "Joins pentatonic box 1 to the boxes above it with slides, so you stop being stuck at fret 5. Keep pressure on through the slide; the arrival note should not need to be picked.", "goalBpm": 100},
+  {"id": "raag-yaman", "kind": "etude", "tech": ["slide"], "title": "Raag Yaman phrases (Sa = C)", "artist": "Fretline étude", "genre": "Raag", "riff": "raag-yaman", "key": "Yaman, Sa = C", "tip": "Raag Yaman with Sa on C (G string, fret 5). All notes natural except Ma, which is sharp (F♯). The phrases are the raag’s classic movements: Ni Re Ga Re Sa, then Ga Ma Dha Ni Sa′ and back down. Play slowly and let each note sit; slides are the meend between notes."},
+  {"id": "bends-to-pitch", "kind": "etude", "tech": ["bend"], "title": "Bends to pitch", "artist": "Fretline étude", "genre": "Technique", "riff": "bends-to-pitch", "key": "A minor pentatonic", "tip": "Each bend is shown first as its target note. Play the target, then bend up to match it. Use three fingers on the string to push. If you are short of the pitch, the Follow mode will not move on.", "goalBpm": 66},
+  {"id": "bend-release", "kind": "etude", "tech": ["bend"], "title": "Bend and release", "artist": "Fretline étude", "genre": "Technique", "riff": "bend-release", "key": "A minor pentatonic", "tip": "Bend up, hold, release back to the fretted note without picking again, then play down the box. The release is as important as the bend: keep it in tune on the way down.", "goalBpm": 72},
+  {"id": "unison-bends", "kind": "etude", "tech": ["bend"], "title": "Unison bends", "artist": "Fretline étude", "genre": "Technique", "riff": "unison-bends", "key": "A minor pentatonic", "tip": "Bend the lower string up to match the fretted note on the string above, and play both together. When the two pitches match, the beating stops. That is the sound to listen for.", "goalBpm": 68},
+  {"id": "rock-doublestops", "kind": "etude", "tech": ["bend"], "title": "Rock ’n’ roll double stops in A", "artist": "Fretline étude", "genre": "Technique", "riff": "rock-doublestops", "key": "A minor blues", "tip": "Chuck Berry style double stops in A: two strings with one finger, pushed with a swing feel. Then a bend and a bend-release on the G string. Goal: 140 bpm.", "goalBpm": 140},
+  {"id": "blues-box", "kind": "etude", "tech": ["bend"], "title": "Blues lick in the upper box", "artist": "Fretline étude", "genre": "Technique", "riff": "blues-box", "key": "A minor pentatonic", "tip": "A minor pentatonic up at frets 10 to 13 (the same notes as box 1, an octave higher on the top strings). Whole-step bends on the B string; the 15 is the target pitch, not a fret to play.", "goalBpm": 70},
+  {"id": "slow-blues", "kind": "etude", "tech": ["bend", "vibrato"], "title": "Slow blues phrase with vibrato", "artist": "Fretline étude", "genre": "Technique", "riff": "slow-blues", "key": "A minor pentatonic", "tip": "A slow minor blues phrase. Every long note gets vibrato: start it a moment after the note, keep it even, and make it wider on the bent note. Space is part of the phrase; do not rush the rest.", "goalBpm": 60},
+  {"id": "raag-bhairavi", "kind": "etude", "tech": ["slide", "pull", "vibrato"], "title": "Raag Bhairavi phrases (Sa = E)", "artist": "Fretline étude", "genre": "Raag", "riff": "raag-bhairavi", "key": "Bhairavi, Sa = E", "tip": "Raag Bhairavi with Sa on E (B string, fret 5). Re, Ga, Dha and Ni are all komal (flat). It is a morning raag and should sound gentle: slides for meend, a light vibrato (andolan) on the held notes."},
+  {"id": "misirlou", "kind": "song", "tech": ["picked"], "title": "Misirlou", "artist": "Dick Dale", "genre": "Surf rock", "riff": null, "site": "Ultimate Guitar", "tip": "Tremolo picking: very fast down-up strokes on one string while the fretting hand plays the melody. Start with the low E string melody at half speed and keep the pick loose.", "tab":ugq("Dick Dale Misirlou")},
+  {"id": "day-tripper", "kind": "song", "tech": ["picked"], "title": "Day Tripper (riff)", "artist": "The Beatles", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "A blues riff in E that runs up the low strings. Lock it to a metronome: it is easy to rush the second half.", "tab":ugq("Beatles Day Tripper")},
+  {"id": "message-bottle", "kind": "song", "tech": ["picked"], "title": "Message in a Bottle (riff)", "artist": "The Police", "genre": "Rock", "riff": null, "mv": 2, "site": "Ultimate Guitar", "tip": "Two-note shapes with a big stretch (index on one string, pinky four or five frets up on the next). Let every note ring. Warm up first; do not force the stretch.", "tab":ugq("Police Message in a Bottle")},
+  {"id": "enter-sandman", "kind": "song", "tech": ["power"], "title": "Enter Sandman (intro and main riff)", "artist": "Metallica", "genre": "Metal", "riff": null, "site": "Ultimate Guitar", "tip": "Palm-muted low E against picked notes on the A and D strings. Down-picking only for the main riff.", "tab":ugq("Metallica Enter Sandman")},
+  {"id": "stairway-intro", "kind": "song", "tech": ["picked"], "title": "Stairway to Heaven (intro)", "artist": "Led Zeppelin", "genre": "Classic rock", "riff": null, "mv": 3, "site": "Ultimate Guitar", "tip": "Fingerpicked (or hybrid) arpeggios in A minor over a bass line that walks down by half steps. Learn it two chords at a time and keep the top notes singing.", "tab":ugq("Led Zeppelin Stairway to Heaven")},
+  {"id": "sweet-child-intro", "kind": "song", "tech": ["picked"], "title": "Sweet Child O’ Mine (intro)", "artist": "Guns N’ Roses", "genre": "Classic rock", "riff": null, "mv": 3, "site": "Guitar Alliance", "tip": "Plain picked notes, but a big stretch and string skipping at speed. Practise the string skips on their own. The record is tuned down a half step.", "tab":"https://guitaralliance.net/2322-3/"},
+  {"id": "do-i-wanna-know", "kind": "song", "tech": ["hammer", "slide"], "title": "Do I Wanna Know?", "artist": "Arctic Monkeys", "genre": "Indie", "riff": null, "site": "Ultimate Guitar", "tip": "The intro riff: hammer-ons on the low strings and one slide. The feel is behind the beat; play it slower than you think.", "tab":"https://tabs.ultimate-guitar.com/tab/arctic-monkeys/do-i-wanna-know-tabs-1485512"},
+  {"id": "money", "kind": "song", "tech": ["hammer", "pull"], "title": "Money", "artist": "Pink Floyd", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "The bass riff, played on guitar. It is in 7/4, so count seven beats per loop.", "tab":"https://tabs.ultimate-guitar.com/tab/pink-floyd/money-tabs-533189"},
+  {"id": "iron-man", "kind": "song", "tech": ["slide", "power"], "title": "Iron Man", "artist": "Black Sabbath", "genre": "Metal", "riff": null, "site": "Ultimate Guitar", "tip": "Power-chord shapes that slide between positions. The slides have to land exactly on the beat.", "tab":"https://tabs.ultimate-guitar.com/tab/black-sabbath/iron-man-tabs-16899"},
+  {"id": "rock-on", "kind": "song", "tech": ["power", "slide"], "title": "Rock On!! (intro)", "artist": "Farhan Akhtar (Rock On!!)", "genre": "Bollywood", "riff": null, "site": "Acousterr", "tip": "Power chords on the low E and A strings, a slide between them, and muted hits. Tight muting between the hits is what makes it sound right.", "tab":"https://www.acousterr.com/tab/rock-on"},
+  {"id": "johnny-b-goode", "kind": "song", "tech": ["bend"], "title": "Johnny B. Goode (intro)", "artist": "Chuck Berry", "genre": "Rock ’n’ roll", "riff": null, "site": "Ultimate Guitar", "tip": "Double-stop bends on the G and B strings, the sound the rock-doublestops étude trains. The record is in B♭; many tabs move it to A.", "tab":ugq("Chuck Berry Johnny B Goode")},
+  {"id": "wonderful-tonight", "kind": "song", "tech": ["bend"], "title": "Wonderful Tonight (intro)", "artist": "Eric Clapton", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "Slow, singing bends in G. Every bend has to land in tune because nothing else is going on. Check each against the target note first.", "tab":ugq("Eric Clapton Wonderful Tonight")},
+  {"id": "knockin-solo", "kind": "song", "tech": ["bend", "slide"], "title": "Knockin’ on Heaven’s Door (GNR solo)", "artist": "Guns N’ Roses", "genre": "Classic rock", "riff": null, "site": "Applied Guitar Theory", "tip": "Every note is from the G major scale. Frets 11 to 20, so an electric is easier.", "tab":"https://appliedguitartheory.com/lessons/knockin-on-heavens-door-guitar-solo-guns-n-roses/"},
+  {"id": "another-brick-solo", "kind": "song", "tech": ["bend", "pull"], "title": "Another Brick in the Wall Pt. 2 (solo)", "artist": "Pink Floyd", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "D minor pentatonic around frets 10 to 13: the blues-box étude, moved down a fifth.", "tab":"https://tabs.ultimate-guitar.com/tab/pink-floyd/another-brick-in-the-wall-part-2-tabs-46275"},
+  {"id": "sayonee", "kind": "song", "tech": ["bend", "slide"], "title": "Sayonee (lead)", "artist": "Junoon", "genre": "Sufi rock", "riff": null, "site": "Ultimate Guitar", "tip": "Salman Ahmad’s lead mixes rock bends with raag-style slides. Work through it phrase by phrase and sing each phrase before you play it.", "tab":ugq("Junoon Sayonee")},
+  {"id": "aadat", "kind": "song", "tech": ["bend", "vibrato"], "title": "Aadat (intro lead)", "artist": "Jal", "genre": "Indian pop rock", "riff": null, "site": "Ultimate Guitar", "tip": "A melodic lead built on slow bends and vibrato. The bends are the melody, so check each one against its target note.", "tab":ugq("Jal Aadat")},
+  {"id": "layla", "kind": "song", "tech": ["bend", "vibrato"], "title": "Layla (riff)", "artist": "Derek and the Dominos", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "The riff in D minor around frets 10 to 13: fast pentatonic runs ending in a bend with vibrato. Learn the run slowly with a metronome.", "tab":ugq("Derek and the Dominos Layla")},
+  {"id": "little-wing", "kind": "song", "tech": ["hammer", "pull", "slide", "vibrato"], "title": "Little Wing (intro)", "artist": "Jimi Hendrix", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "Chords decorated with hammer-ons and pull-offs, played with the thumb over the neck for the bass notes. The record is tuned down a half step.", "tab":ugq("Jimi Hendrix Little Wing")},
+  {"id": "sultans", "kind": "song", "tech": ["hammer", "pull", "bend", "vibrato"], "title": "Sultans of Swing (first solo)", "artist": "Dire Straits", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "Mark Knopfler plays with his fingers, no pick. The first solo is in D minor; learn the licks one at a time before stringing them together.", "tab":ugq("Dire Straits Sultans of Swing")},
+  {"id": "hotel-california-outro", "kind": "song", "tech": ["bend", "vibrato"], "title": "Hotel California (outro solo)", "artist": "Eagles", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "Twin lead lines in B minor that trade phrases, then harmonize. Learn one part first, then the other. Mostly bends to pitch and arpeggio shapes.", "tab":ugq("Eagles Hotel California solo")},
+  {"id": "comfortably-numb", "kind": "song", "tech": ["bend", "vibrato"], "title": "Comfortably Numb (second solo)", "artist": "Pink Floyd", "genre": "Classic rock", "riff": null, "site": "Ultimate Guitar", "tip": "In B minor. David Gilmour’s bends and wide, slow vibrato are the whole sound. Learn one phrase at a time and copy the record’s phrasing, not just the notes.", "tab":ugq("Pink Floyd Comfortably Numb solo")},
+  {"id": "wywh-intro", "kind": "song", "tech": ["hammer", "pull", "slide", "bend", "vibrato"], "title": "Wish You Were Here (intro lick)", "artist": "Pink Floyd", "genre": "Classic rock", "riff": null, "goal": true, "site": "Ultimate Guitar", "tip": "The goal: every core technique in one short, slow lick.", "tab":"https://tabs.ultimate-guitar.com/tab/pink-floyd/wish-you-were-here-tabs-984061"},
 ];
 
-// Riff notation (see the legend in the Lead player).
+// Riff notation: see the legend in the Lead player.
 const RIFFS = {
-  'under-pressure': {title:'Under Pressure (bass riff)', bpm:114, ts:4, capo:0, src:'Ultimate Guitar', approx:true, text:'4/0:8 4/0 4/0 r 4/0:16 4/0 4/0:8 r 5/0 |\n4/0:8 4/0 4/0 r 4/0:16 4/0 4/0:8 r 5/0'},
-  'peter-gunn': {title:'Peter Gunn Theme', bpm:120, ts:4, capo:0, src:'Ultimate Guitar / GuitarTabsExplorer', text:'6/0:8 6/0 6/2 6/0 6/3 6/0 6/5 6/4 |\n6/0 6/0 6/2 6/0 6/3 6/0 6/5 6/4'},
-  'seven-nation-army': {approx:true, title:'Seven Nation Army (riff and G–A section)', bpm:124, ts:4, capo:0, src:'Songsterr', text:'5/7:4. 5/7:8 5/10:8. 5/7:16 5/5:4 | 5/3:2 5/2:2 |\n5/7:4. 5/7:8 5/10:8. 5/7:16 5/5:4 | 5/3:2 5/2:2 |\n6/3:2 6/3:2 | 6/3:4 6/3 6/5 6/5 | 6/5:2 6/5:2 |\n5/7:4. 5/7:8 5/10:8. 5/7:16 5/5:4 | 5/3:2 5/2:2 |\n5/7:4. 5/7:8 5/10:8. 5/7:16 5/5:4 | 5/3:2 5/2:2'},
-  'smoke-on-the-water': {approx:true, title:'Smoke on the Water (riff and chorus)', bpm:112, ts:4, capo:0, src:'Ultimate Guitar', text:'3/0:4 3/3 3/5:4. 3/0:8 | 3/3:8 3/6 3/5:2 r:4 | 3/0:4 3/3 3/5:4. 3/3:8 | 3/0:2. r:4 |\n3/0:4 3/3 3/5:4. 3/0:8 | 3/3:8 3/6 3/5:2 r:4 | 3/0:4 3/3 3/5:4. 3/3:8 | 3/0:2. r:4 |\n5/3+4/5:2. r:4 | 6/4+5/6:2. r:4 | 5/3+4/5:2. r:4 | 6/4+5/6:2 r:2'},
-  'kal-ho-naa-ho': {free:true, title:'Kal Ho Naa Ho', bpm:84, ts:4, capo:0, src:'Acousterr', text:'3/5:2 3/4:4 3/5 | r:4 3/4 3/5 r |\n3/4 3/5 2/5 2/3 | 3/5:4 3/4:2 3/2:4 |\n3/4:2 3/2:4 3/4 | r:4 3/5:2 3/4:4 |\n3/5:2 3/4:4 3/5 | r:4 3/4 3/5 2/5 |\n2/3:4 3/5 3/4 r'},
-  'tera-mujhse': {free:true, title:'Tera Mujhse Hai Pehle Ka Naata Koi', bpm:100, ts:4, capo:0, src:'Ultimate Guitar', approx:true, text:'3/0:8 3/2 4/2 3/0 3/0 3/2 3/0 3/0 |\n3/0 2/1 2/3 1/0 3/0 1/1 1/0 2/3 |\n2/3 2/1 2/1 2/3 1/0 2/3:4.'},
-  'come-as-you-are': {title:'Come As You Are (riff, four times)', bpm:120, ts:4, capo:0, src:'Ultimate Guitar', approx:true, text:'4/0:8 4/0 4/1 4/2 3/0 4/2 3/0 4/2 | 4/2 4/1 4/0 3/2 4/0 4/0 3/2 r |\nr:8 4/0 4/1 4/2 3/0 4/2 3/0 4/2 | 4/2 4/1 4/0 3/2 4/0 4/0 3/2 r |\nr:8 4/0 4/1 4/2 3/0 4/2 3/0 4/2 | 4/2 4/1 4/0 3/2 4/0 4/0 3/2 r |\nr:8 4/0 4/1 4/2 3/0 4/2 3/0 4/2 | 4/2 4/1 4/0 3/2 4/0 4/0 3/2 r'},
-  'pretty-woman': {title:'Oh, Pretty Woman (riff)', bpm:128, ts:4, capo:0, src:'Ultimate Guitar', approx:true, text:'6/0:8 6/0 6/4 5/2 5/5:4 r:4 |\n6/0:8 6/0 6/4 5/2 5/5:4 r:4 |\n6/0:8 6/0 6/4 5/2 5/5 4/4 4/2 5/5'},
-  'nothing-else-matters': {title:'Nothing Else Matters (opening)', bpm:69, ts:6, tsDen:8, capo:0, src:'Ultimate Guitar', text:'6/0:8 3/0 2/0 1/0 2/0 3/0 |\n6/0 3/0 2/0 1/0 2/0 3/0 |\n6/0 3/0 2/0 1/0 2/0 3/0 |\n6/0 3/0 2/0 1/0 2/0 3/0'},
-  'tum-hi-ho': {title:'Tum Hi Ho (piano intro)', bpm:90, ts:4, capo:0, src:'Notes & Sargam', free:true, text:'3/2:4 2/1:4 1/0:4 1/0:4 1/1:4 2/1:4 2/3:4 2/0:4 |\n3/2:4 2/1:4 1/0:4 1/0:4 1/1:4 2/1:4 2/3:4 2/0:4 |\n3/2:4 2/1:4 1/0:4 1/0:4 1/1:4 2/1:4 2/3:4 2/0:4 |\n3/2:4 2/1:4 1/0:4 1/0:4 1/1:4 2/1:4 2/3:4 2/0:4'},
+  "pent-threes": {"title": "Pentatonic in threes", "bpm": 80, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "6/5:8t 6/8 5/5 6/8 5/5 5/7 5/5 5/7 4/5 5/7 4/5 4/7 |\n4/5 4/7 3/5 4/7 3/5 3/7 3/5 3/7 2/5 3/7 2/5 2/8 | 2/5 2/8 1/5 2/8 1/5 1/8 1/8 1/5 2/8 1/5 2/8 2/5 | 2/8 2/5 3/7 2/5 3/7 3/5 3/7 3/5 4/7 3/5 4/7 4/5 | 4/7 4/5 5/7 4/5 5/7 5/5 5/7 5/5 6/8 5/5 6/8 6/5 | 6/5:2"},
+  "andalusian-arps": {"title": "Am–G–F–E arpeggios", "bpm": 90, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "5/0:8 4/2 3/2 2/1 1/0 2/1 3/2 4/2 | 6/3 5/2 4/0 3/0 2/0 1/3 2/0 3/0 |\n4/3 3/2 2/1 1/1 2/1 3/2 4/3 3/2 | 6/0 5/2 4/2 3/1 2/0 1/0 2/0 3/1 |\n5/0 4/2 3/2 2/1 1/0 2/1 3/2 4/2 | 6/3 5/2 4/0 3/0 2/0 1/3 2/0 3/0 |\n4/3 3/2 2/1 1/1 2/1 3/2 4/3 3/2 | 6/0+5/2+4/2+3/1+2/0+1/0:1"},
+  "minor-arps-68": {"title": "6/8 arpeggios: Am, C, D, F", "bpm": 70, "ts": 6, "capo": 0, "src": "Fretline étude", "text": "5/0:8 4/2 3/2 2/1 3/2 4/2 | 5/3 4/2 3/0 2/1 3/0 4/2 | 4/0 3/2 2/3 1/2 2/3 3/2 | 4/3 3/2 2/1 1/1 2/1 3/2 |\n5/0 4/2 3/2 2/1 3/2 4/2 | 5/3 4/2 3/0 2/1 3/0 4/2 | 6/0 5/2 4/2 3/1 2/0 3/1 | 6/0 5/2 4/2 3/1 2/0:4", "tsDen": 8},
+  "turkey-straw": {"title": "Turkey in the Straw", "bpm": 72, "ts": 2, "capo": 0, "src": "Ryan's Mammoth Collection (1883)", "text": "r:4. 2/0:16 3/2 | 3/0 4/4 3/0 3/2 3/0:8 5/2:16 5/3 | 4/0 4/2 4/0 5/2 4/0:8 3/0:16 3/2 | 2/0:8 2/0 2/0:16 3/2 3/0 3/2 |\n3/4:8 3/2 3/2 3/4:16 3/2 | 3/0 4/4 3/0 3/2 3/0:8 5/2:16 5/3 | 4/0 4/2 4/0 5/2 4/0:8 2/0:16 2/1 | 2/0 3/2 2/0 2/1 2/3 2/0 3/0 3/2 |\n3/4:8 3/0 3/0 3/0:16 3/2 | 2/0 2/1 2/3 1/0 2/3:8 2/3:16 2/1 | 2/0 2/1 2/3 1/0 2/3:8 2/3:16 2/0 | 2/1 2/3 1/0 1/2 1/0:8 1/0:16 2/3 |\n2/1 2/3 1/0 1/2 1/0:8 1/0:16 1/2 | 1/3 1/2 1/3 1/0 1/0 2/3 2/0 2/3 | 2/0 2/1 2/0 3/0 3/2:8 3/0:16 3/2 | 2/0:8 2/0:16 3/0 3/2 3/0 4/2 3/0 |\n4/0:8 3/0 3/0"},
+  "arkansas": {"title": "Arkansas Traveller", "bpm": 72, "ts": 2, "capo": 0, "src": "Ryan's Mammoth Collection (1883)", "text": "r:4. 5/0:16t 5/2 5/4 | 4/0:16 4/4 4/2 4/0 5/2:8 5/2 | 5/0 5/0 4/0:4 | 4/2:16 4/2 4/2:8 4/4:16 4/4 4/4:8 |\n4/0:16 4/4 4/2 4/0 5/2:8 5/0 | 4/0:16 4/4 4/2 4/0 5/2:8 5/2 | 5/0 5/0 4/0:4 | 2/3:16 2/2 2/3 3/2 2/0 2/3 3/2 3/0 |\n4/4 4/2 4/0 5/4 4/0:8 r | 1/5:16 1/3 1/2 1/5 1/3 1/2 1/0 1/3 | 1/2 1/0 2/3 1/2 1/0 2/3 2/2 3/2 | 2/3 2/2 2/3 1/2 1/0 2/3 1/0 1/3 |\n1/2 1/0 2/3 1/2 1/0:8 1/2:16 1/3 | 1/5 1/3 1/2 1/5 1/3 1/2 1/0 1/3 | 1/2 1/0 2/3 1/2 1/0 2/3 2/2 3/2 | 2/3 2/2 2/3 3/2 2/0 2/3 3/2 3/0 |\n4/4 4/2 4/0 5/4 4/0:4"},
+  "temperance": {"title": "Temperance Reel", "bpm": 70, "ts": 2, "capo": 0, "src": "Ryan's Mammoth Collection (1883)", "text": "r:4. 4/0:16t 4/2 4/4 | 3/0:8 3/0:16 4/4 3/0 3/2 2/0 2/1 | 2/3 2/0 1/3 1/0 2/3 2/0 3/2 2/1 | 2/0 4/2 4/2 4/0 4/2 4/4 3/0 3/2 |\n3/4 3/0 3/2 4/4 3/0 4/4 4/2 4/0 | 3/0:8 3/0:16 4/4 3/0 3/2 2/0 2/1 | 2/3 2/0 1/3 1/0 2/3 2/0 3/2 2/1 | 2/0 4/2 4/2 4/0 4/2 4/4 3/0 3/2 |\n2/0 2/3 3/2 4/4 3/0:8 2/0 | 2/0:16 1/0 1/0 2/3 1/0:8. 1/2:16 | 1/3 1/0 1/5 1/2 1/3 1/2 1/0 2/3 | 2/0 2/3 2/3 1/0 2/3:8. 1/0:16 |\n1/3 1/0 1/5 1/2 1/3 1/2 1/0 2/3 | 2/0 1/0 1/0 2/3 1/0:8. 1/2:16 | 1/3 1/0 1/5 1/2 1/3 1/2 1/0 2/3 | 2/0 4/2 4/2 4/0 4/2 4/4 3/0 3/2 |\n2/0 2/3 3/2 4/4 3/0:8 3/4:16 3/0 | 3/2 4/4 3/0 4/4 4/2 4/0"},
+  "pent-sixes": {"title": "Pentatonic sixes", "bpm": 60, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "1/8:16t 1/5 2/8 2/5 3/7 3/5 1/8 1/5 2/8 2/5 3/7 3/5 1/8 1/5 2/8 2/5 3/7 3/5 1/8 1/5 2/8 2/5 3/7 3/5 |\n2/8 2/5 3/7 3/5 4/7 4/5 2/8 2/5 3/7 3/5 4/7 4/5 2/8 2/5 3/7 3/5 4/7 4/5 2/8 2/5 3/7 3/5 4/7 4/5 |\n3/7 3/5 4/7 4/5 5/7 5/5 3/7 3/5 4/7 4/5 5/7 5/5 3/7 3/5 4/7 4/5 5/7 5/5 3/7 3/5 4/7 4/5 5/7 5/5 |\n4/7 4/5 5/7 5/5 6/8 6/5 4/7 4/5 5/7 5/5 6/8 6/5 4/7 4/5 5/7 5/5 6/8 6/5 4/7 4/5 5/7 5/5 6/8 6/5 |\n5/7:2 6/5:2"},
+  "sixths-c": {"title": "Soul sixths in C", "bpm": 76, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "3/12+1/12:4 3/10+1/10 3/9+1/8 3/7+1/7 | 3/5+1/5:2 3/9+1/8:2 |\n3/10+1/10:8 3/9+1/8 3/7+1/7 3/5+1/5 3/7+1/7:4 3/9+1/8 | 3/5+1/5:1"},
+  "devils-dream": {"title": "Devil's Dream", "bpm": 66, "ts": 2, "capo": 0, "src": "Ryan's Mammoth Collection (1883)", "text": "r:4. 1/0:8 | 1/5:16 1/4 1/5 1/0 1/5 1/4 1/5 1/0 | 1/5 1/4 1/5 1/0 1/2 1/0 2/3 2/2 | 2/3 1/2 2/0 1/2 2/3 1/2 2/0 1/2 |\n2/3 1/2 2/0 1/2 1/5 1/4 1/2 1/0 | 1/5 1/4 1/5 1/0 1/5 1/4 1/5 1/0 | 1/5 1/4 1/5 1/0 1/2 1/0 2/3 2/2 | 2/3 1/2 1/0 2/3 2/2 3/2 3/4 3/2 |\n4/2:8 3/2 3/2 1/0 | 2/2:16 1/0 3/2 1/0 2/2 1/0 3/2 1/0 | 2/2 1/0 3/2 1/0 1/2 1/0 2/3 2/2 | 2/3 1/2 2/0 1/2 2/3 1/2 2/0 1/2 |\n2/3 1/2 2/0 1/2 1/5 1/4 1/2 1/0 | 2/2 1/0 3/2 1/0 2/2 1/0 3/2 1/0 | 2/2 1/0 3/2 1/0 1/2 1/0 2/3 2/2 | 2/3 1/2 1/0 2/3 2/2 3/2 3/4 3/2 |\n4/2:8 3/2 3/2"},
+  "liverpool": {"title": "Liverpool Hornpipe", "bpm": 66, "ts": 2, "capo": 0, "src": "Ryan's Mammoth Collection (1883)", "text": "r:4. 3/2:8 | 4/4:16 4/0 4/4 3/2 2/3 1/2 1/5 1/2 | 1/3 1/0 1/2 2/3 2/3 2/2 2/0 3/2 | 3/0 3/4 3/0 3/4 4/4 3/2 4/4 3/2 |\n4/2 4/4 3/0 3/2 3/0 4/4 4/2 4/0 | 4/4 4/0 4/4 3/2 2/3 1/2 1/5 1/2 | 1/3 1/0 1/2 2/3 2/3 2/2 2/0 3/2 | 1/5 1/2 2/3 1/2 1/3 1/0 2/2 3/2 |\n2/3:8 2/3 2/3 3/2 | 2/3:16 1/2 2/3 1/2 2/2 1/0 2/2 1/0 | 2/0 2/3 2/0 2/3 2/0 3/2 3/0 4/4 | 3/0 3/4 3/0 3/4 4/4 3/2 4/4 3/2 |\n4/2 4/4 3/0 3/2 3/0 4/4 4/2 4/0 | 4/4 4/0 4/4 3/2 2/3 1/2 1/5 1/2 | 1/3 1/0 1/2 2/3 2/3 2/2 2/0 3/2 | 1/5 1/2 2/3 1/2 1/3 1/0 2/2 3/2 |\n2/3:8 2/3 2/3"},
+  "flowers": {"title": "Flowers of Edinburgh", "bpm": 76, "ts": 4, "capo": 0, "src": "Ryan's Mammoth Collection (1883)", "text": "r:2. 3/0:8 4/2 | 4/0:4 4/0:8t 4/2 4/4 3/0:4 3/0:8 3/2 | 3/4 3/0 2/0 2/3 2/1 2/0 3/2 3/0 | 3/0 4/4 4/2 4/0 4/0 4/2 4/4 3/0 |\n3/2 4/4 3/4 3/0 4/2:4 3/0:8 4/2 | 4/0:4 4/0:8t 4/2 4/4 3/0:4 3/2:8 2/1 | 2/0 3/0 2/0 2/3 1/0 1/2 1/3 1/0 | 2/3 2/1 2/0 3/2 3/0 4/4 3/0 3/2 |\n3/4:4 3/0 3/0 2/3 | 1/3 1/3 1/3:8 1/7 1/5 1/3 | 1/2 1/0 1/2 1/3 1/2 1/5 1/3 1/2 | 1/0 2/3 1/0 1/2 1/3 1/2 1/0 2/3 |\n2/0:4 1/0 1/0:8 1/2 1/3 1/0 | 2/3 2/0 3/0 2/0 2/3:4 2/0:8 2/3 | 1/0 2/3 1/0 1/2 1/3:4 1/2:8 1/0 | 2/3 2/1 2/0 3/2 3/0 4/4 3/0 3/2 |\n3/4:4 3/0 3/0"},
+  "donna-mobile": {"title": "La donna è mobile", "bpm": 60, "ts": 3, "tsDen": 8, "capo": 0, "src": "Verdi, Rigoletto (1851)", "text": "1/10:8 1/10 1/10 | 1/13:16. 1/11:32 1/8:4 | 1/8:8 1/8 1/8 | 1/11:16. 1/10:32 2/11:4 |\n1/10:8 1/8 2/11 | 2/11:16. 2/10:32 2/10:4 | 2/13:8 2/11 2/8 | 2/8:16. 3/10:32 3/10:4 |\n1/10:8 1/10 1/10 | 1/13:16. 1/11:32 1/8:4 | 1/8:8 1/8 1/8 | 1/11:16. 1/10:32 2/11:4 |\n1/10:8 1/8 2/11 | 2/11:16. 2/10:32 2/10:4 | 2/13:8 2/11 2/8 | 2/8:16. 3/10:32 3/10:4"},
+  "hammer-ladder": {"title": "Hammer-on ladder", "bpm": 70, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "6/5:8t h8 5/5 h7 4/5 h7 3/5 h7 2/5 h8 1/5 h8 |\n1/5:8t h8 2/5 h8 3/5 h7 4/5 h7 5/5 h7 6/5 h8 |\n4/5:8t h7 3/5 h7 2/5 h8 1/5 h8 2/5 h8 3/5 h7 |\n6/5:8t h8 5/5 h7 4/5 h7 3/5 h7 2/5 h8 1/5 h8 | 1/5:1"},
+  "legato-triplets": {"title": "Rock triplets: hammer and pull", "bpm": 72, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "1/8:8t p5 2/8 2/8 p5 3/7 3/7 p5 4/7 4/7 p5 5/7 |\n1/8:8t p5 2/8 2/8 p5 3/7 3/7 p5 4/7 4/7 p5 5/7 |\n5/5:8t h7 4/5 4/5 h7 3/5 3/5 h7 2/5 2/5 h8 1/5 |\n1/8:8t p5 2/8 2/8 p5 3/7 3/7 p5 4/7 5/7:4 |\n6/5:1"},
+  "box-slides": {"title": "Sliding between pentatonic boxes", "bpm": 70, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "3/5:8 s7 3/7 s9 2/8:8 s10 1/8:8 s10 | 1/10:8 p8 2/10:8 s8 2/5:4 3/7:8 3/5 |\n4/5:8 s7 4/7 s10 3/9:8 s12 2/10:8 s13 | 2/13:8 p10 3/12 s9 3/7:4 3/5:4 |\n4/7:8 4/5 5/7 s5 6/8:4 6/5:4 | 6/5:1"},
+  "raag-yaman": {"title": "Raag Yaman phrases (Sa = C)", "bpm": 60, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "3/4:4 3/7 2/5 3/7 | 3/5:1 |\n3/4:4 3/7 2/5 2/7 | 2/8:1 |\n2/7:4 s5 3/7 2/5 | 3/7:4 3/5:2. |\n2/5:4 2/7 2/10 1/7 | 1/8:1 |\n1/8:4 1/7 2/10 s8 | 2/7:4 2/5 3/7 3/5 | 3/5:1", "free": true},
+  "bends-to-pitch": {"title": "Bends to pitch", "bpm": 66, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "3/9:4 3/7b9:2 r:4 | 3/9:4 3/7b9:2 r:4 |\n2/10:4 2/8b10:2 r:4 | 2/10:4 2/8b10:2 r:4 |\n1/10:4 1/8b10:2 r:4 | 1/10:4 1/8b10:2 r:4 |\n3/7b9:2 2/8b10:2 | 1/8b10:1"},
+  "bend-release": {"title": "Bend and release", "bpm": 72, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "2/8b10r8:4 2/5:8 3/7 3/5:4 3/7:4 | 3/7b9r7:4 3/5:8 4/7 4/5:2 |\n1/8b10r8:4 1/5:8 2/8 2/5:4 2/8:4 | 2/8b10r8:4 2/5:8 3/7 3/7b9:2"},
+  "unison-bends": {"title": "Unison bends", "bpm": 68, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "3/7b9+2/5:2 3/7b9+2/5:2 | 2/8b10+1/5:2 2/8b10+1/5:2 |\n3/7b9+2/5:4 2/5:8 3/7:8 3/5:4 4/7:4 | 3/7b9+2/5:1"},
+  "rock-doublestops": {"title": "Rock ’n’ roll double stops in A", "bpm": 96, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "2/5+1/5:8 2/5+1/5 2/5+1/5 2/5+1/5 3/5:8 3/7b9:4 3/7:8 |\n2/8+1/8:8 2/8+1/8 2/8+1/8 2/8+1/8 2/5:8 3/7:8 3/5:4 |\n2/5+1/5:8 2/5+1/5 2/5+1/5 2/5+1/5 3/7b9r7:4 3/5:8 4/7 |\n4/5:8 4/7 3/5 3/7 3/7+2/5:2"},
+  "blues-box": {"title": "Blues lick in the upper box", "bpm": 70, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "2/13b15:4 1/10:8 2/13 2/10:2 | 1/12:8 1/10 2/13 2/10 3/12:4 3/9:4 |\n2/13b15r13:4 2/10:8 2/13 1/10:4 1/12:4 | 2/10:8 2/13 2/10 3/12 2/10:2"},
+  "slow-blues": {"title": "Slow blues phrase with vibrato", "bpm": 60, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "1/5~:2 2/8:8 1/5:8 2/5:4 | 2/8b10~:2. r:4 |\n3/7:8 3/5 3/7b9:4 2/5~:2 | 3/5:8 4/7:8 4/5:4 5/7:4 6/5~:4"},
+  "raag-bhairavi": {"title": "Raag Bhairavi phrases (Sa = E)", "bpm": 60, "ts": 4, "capo": 0, "src": "Fretline étude", "text": "2/5:4 2/6 2/8 1/5 | 2/8:4 s6 2/5:2 |\n2/8:4 1/5 1/7 1/8 | 1/8:4 p7~:2. |\n1/7:4 1/8 1/10 1/12~ | 1/10:4 1/8 s7:2 |\n1/5:4 2/8 2/6 2/5 | 3/7:4 2/5~:2. ", "free": true},
   // technique drills
-  'satisfaction': {title:'Satisfaction (riff)', bpm:136, ts:4, capo:0, src:'GuitarTabsExplorer', approx:true, text:'5/2:8 5/2 5/2:4 5/4:8 5/5:4. |\n5/5:8 5/5 5/4:4 5/4:8 5/2:4. |\n5/2:8 5/2 5/2:4 5/4:8 5/5:4. |\n5/5:8 5/5 5/4:4 5/4:8 5/2:4.'},
-  'bites-the-dust': {title:'Another One Bites the Dust (riff)', bpm:110, ts:4, capo:0, src:'Ultimate Guitar', approx:true, text:'6/5:8 6/3 6/0:4 6/0 6/0 | r:8 6/0 6/0 6/0 6/3 6/0 6/5:4 |\n6/5:8 6/3 6/0:4 6/0 6/0 | r:8 6/0 6/0 6/0 6/3 6/0 6/5:4'},
-  'rising-sun': {title:'House of the Rising Sun (full verse)', bpm:80, ts:6, tsDen:8, capo:0, src:'Applied Guitar Theory', approx:true, text:'5/0:8 4/2:16 3/2 2/1:8 1/0 2/1 3/2 | 5/3:8 4/2:16 3/0 2/1:8 1/0 2/1 3/0 | 4/0:8 3/2:16 2/3 1/2:8 1/2 2/3 3/2 | 4/3:8 3/2:16 2/1 1/1:8 1/1 2/1 3/2 |\n5/0:8 4/2:16 3/2 2/1:8 1/0 2/1 3/2 | 5/3:8 4/2:16 3/0 2/1:8 1/0 2/1 3/0 | 6/0:8 5/2:16 4/2 3/1 2/0 1/0:8 2/0 3/1 | 6/0:8 5/2:16 4/2 3/1 2/0 1/0:8 2/0 3/1 |\n5/0:8 4/2:16 3/2 2/1:8 1/0 2/1 3/2 | 5/3:8 4/2:16 3/0 2/1:8 1/0 2/1 3/0 | 4/0:8 3/2:16 2/3 1/2:8 1/2 2/3 3/2 | 4/3:8 3/2:16 2/1 1/1:8 1/1 2/1 3/2 |\n5/0:8 4/2:16 3/2 2/1:8 1/0 2/1 3/2 | 6/0:8 5/2:16 4/2 3/1 2/0 1/0:8 2/0 3/1 | 5/0:8 4/2:16 3/2 2/1:8 1/0 2/1 3/2 | 6/0:8 5/2:16 4/2 3/1 2/0 1/0:8 2/0 3/1'},
-  'aanewala-pal': {free:true, title:'Aanewala Pal Jaanewala Hai', bpm:150, ts:4, capo:0, src:'Acousterr', approx:true, text:'4/3:4 4/0 3/2:2 | 3/1:2 3/2 | 2/3:4 2/2 2/3:2 | 3/2:4 3/0 4/3 2/1 |\n3/2:4 3/0 3/2 3/0 | 4/3:1 | 4/3:4 3/0 3/2 2/3 | 2/3:4 1/0 2/3:2 |\n2/1:4 2/3 3/0 3/2 | 4/3:4 3/0 3/2 2/3'},
-  'yeh-shaam': {title:'Yeh Shaam Mastani', bpm:90, ts:4, capo:0, src:'Notes & Sargam + GuitarTabsExplorer', free:true, text:'4/0:4 3/0:2 3/2:4 3/0:4 4/2:4 4/0:4 |\n4/0:4 3/0:4 3/0:4 3/2:4 3/0:4 3/2:4 2/0:2 |\n2/0:4 2/3:2 2/3:4 1/0:4 2/3:4 2/1:4 2/3:4 2/1:4 2/3:4 2/1:4 2/0:4 |\n2/0:4 2/1:4 2/0:4 3/2:2 2/3:4 2/3:4 2/0:4 3/2:4 3/0:4 |\n2/0:4 2/0:4 2/0:4 2/3:2 2/3:4 1/0:4 2/3:4 2/1:4 2/3:4 2/1:2 |\n2/3:4 2/1:4 2/0:4 2/0:4 2/0:4 3/2:2 2/3:4 2/3:4 2/0:4 3/2:4 3/0:2'},
-  'pehla-nasha-lead': {title:'Pehla Nasha', bpm:90, ts:4, capo:0, src:'Notes & Sargam', free:true, text:'3/2:4 3/2:4 2/1:2 2/1:2 3/3:4 3/2:4 3/0:4 2/1:4 2/1:4 |\n3/2:4 3/2:4 2/1:2 2/1:2 3/3:4 3/2:4 3/0:4 3/2:4 3/0:4 |\n4/3:4 4/1:4 4/0:4 4/1:4 4/3:2 3/3:4 3/2:4 3/2:4 |\n4/3:4 4/1:4 4/0:4 4/1:4 4/3:4 3/3:4 3/2:4 3/0:4'},
-  'ajeeb-dastan': {free:true, title:'Ajeeb Dastan Hai Yeh', bpm:100, ts:4, capo:0, src:'Notes & Sargam + Acousterr', text:'3/0:8 3/2 2/1 1/0 2/3 2/1 3/2 3/1 | 3/0:16 3/2 2/1 1/0 1/0:4 r:2 |\n3/0:8 3/2 2/1 1/0 2/3 2/1 3/2 3/1 | 3/0:16 3/2 2/1 1/3 1/3:4 r:2 |\n3/2:4 3/0 3/2 3/0 | 4/2 4/0 5/3 4/2 | 3/2 3/0 3/2 3/0 | 4/2 4/0 5/3 4/0 |\n4/2 4/0 4/2 4/0 | 5/3 5/2 5/0 5/2 | 5/0:1 | 3/2:4 3/0 3/2 3/0 | 4/2 4/0 5/3 5/3 | 5/3 4/0 4/2 4/3'},
-  'main-agar-kahoon': {free:true, title:'Main Agar Kahoon (intro)', bpm:120, ts:4, capo:0, src:'Acousterr (ukulele, converted)', text:'1/8:4 1/9 1/8 1/9 | 1/8 1/9 1/8 1/6 | 1/4:1 |\n1/4:4 1/6 1/4 1/6 | 1/4 1/6 1/4 1/3 | 1/1:1 |\n1/1:4 1/3 1/1 1/3 | 1/1 1/3 1/1 2/4 | 2/2:2 2/1:2'},
-  'mitwa': {free:true, title:'Mitwa (intro)', bpm:100, ts:4, capo:0, src:'Acousterr', text:'4/11:8 3/9 1/0:4 | 2/0:8 4/9 3/8:4 | 1/0:8 2/0:4. |\n3/6:8 4/7:4. | 2/0:8 4/9 3/8:4 | 1/0:8 2/0:4.'},
-  'gerua': {free:true, title:'Gerua (hook)', bpm:90, ts:4, capo:0, src:'Notes & Sargam', text:'1/0:4 1/2 1/0 1/3:2 1/3:4 1/2 1/0 2/1:2 |\n2/3:4 1/0 2/3 1/2:2 1/2:4 1/0 2/3 2/0:2 |\n2/1:4 2/3 2/1 1/0:2 1/0:4 2/3 2/1 3/2:2 |\n3/2:4 2/0 2/1 2/0:2 3/2:4 2/0 3/2 3/0:2 4/4:2'},
-  'hawayein': {free:true, title:'Hawayein', bpm:90, ts:4, capo:3, src:'Notes & Sargam', text:'1/3:4 1/1 1/0:2 1/0:4 1/1 1/0 2/3 2/1 2/1 3/2:2 |\n3/2:4 3/2 2/1 2/3 1/0 2/3:2 |\n2/0:4 2/0 2/1 2/0 3/2 3/0:2 |\n2/1:4 2/1 2/0 3/0 3/2 3/2 3/2 |\n2/1:4 3/2 3/2 2/1 3/2 3/2 |\n3/2:4 3/2 3/2 4/3 3/0 3/0 3/0 |\n3/2:4 3/0 3/0 3/2 3/0 3/0:2'},
-  'dil-diyan-gallan': {free:true, title:'Dil Diyan Gallan', bpm:90, ts:4, capo:0, src:'Notes & Sargam', text:'5/0:4 5/2 5/2 5/4:2 5/4:4 5/4 5/2:2 |\n5/2:4 4/0:2 4/0:4 4/0 4/0 5/4 5/2 5/0 5/2:2 |\n5/4:4 5/2 5/0:2 5/0:4 5/2 5/0:2 |\n5/4:4 4/0 4/0 4/4 4/4 4/4:2 4/2:4 4/4 3/0 3/0 3/0:2 4/4:4 4/2 4/0 4/0 4/0 4/2 4/2:2 5/4:2'},
-  'pal-pal-dil': {free:true, title:'Pal Pal Dil Ke Paas', bpm:100, ts:4, capo:0, src:'Notes & Sargam', text:'2/0:2 2/2:2 2/3:2. 1/2:8 1/0:8 1/2:8 1/0:4 |\n1/0:1. 2/0:4. 2/0:4 2/0:8 2/2:8 2/2:8 2/3:1. |\n4/4:2 3/0:2 3/2:2. 2/0:8 3/2:8 2/0:8 3/2:4 |\n3/2:1. 4/2:4. 4/2:4'},
-  'rock-on': {title:'Rock On!! (intro)', bpm:110, ts:4, capo:0, src:'Acousterr', text:'6/5+5/7:8 6/5+5/7 6/5+5/7:4 r:2 | 6/6+5/8:4 r:4 r:2 | 6/3+5/5:4 5/3:4 r:2 |\n6/5+5/7:8 6/5+5/7 6/5+5/7:4 r:2 | 6/6+5/8:4 r:4 r:2 | 6/3+5/5:4 5/3:4 r:2'},
-  'yaaron': {title:'Yaaron', bpm:90, ts:4, capo:0, src:'Notes & Sargam', free:true, text:'4/3:4 3/0:4 3/2:4 3/0:4 4/3:4 5/3:4 4/0:4 4/0:4 5/3:4 |\n5/3:4 4/0:4 4/2:4 |\n3/2:2 2/1:2 3/3:4 3/3:2 2/3:2 2/1:4 |\n4/3:4 2/3:2 2/1:2 3/2:4 3/3:2 3/2:4 3/0:4 4/3:4 |\n4/3:2 3/0:2 3/2:2 3/3:2 2/1:2 3/3:4 3/3:2 2/3:2 2/1:4 |\n4/3:4 2/3:2 2/1:2 2/1:4 3/2:4 3/2:4 3/3:2 3/2:4 3/0:4 4/3:4'},
-  'pal-kk': {title:'Pal (Hum Rahe Ya Na Rahe Kal)', bpm:90, ts:4, capo:0, src:'Notes & Sargam', free:true, text:'2/0:4 3/2:4 3/0:4 2/0:4 2/1:4 2/3:2 2/3:2 2/1:4 2/0:4 2/1:2 |\n2/1:2 2/1:2 1/0:4 1/0:4 2/3:4 2/1:2 2/3:2 |\n2/0:4 3/2:4 3/0:4 2/0:2 2/3:2 2/3:4 2/1:4 2/0:2 2/1:2 |\n2/1:2 2/1:2 1/0:4 1/0:4 2/3:4 2/1:4 2/3:2'},
-  'moh-moh': {title:'Moh Moh Ke Dhaage', bpm:90, ts:4, capo:0, src:'Notes & Sargam', free:true, text:'4/4:4 3/2:4 2/0:4 2/0:4 2/0:4 2/0:4 2/1:4 2/0:4 3/0:4 4/4:4 |\n4/4:4 3/2:4 2/3:4 3/2:4 2/0:4 3/2:2 4/4:2 3/0:4 3/0:4 |\n4/4:4 3/2:4 2/0:4 2/0:4 2/0:4 2/0:4 2/1:4 2/0:4 3/0:4 4/4:4 |\n4/4:4 3/2:4 2/3:4 3/2:4 2/0:4 3/2:4 4/4:2 3/0:4 3/0:4'},
   'drill-hammer': {title:'Drill: hammer-ons', drill:'hammer', bpm:70, ts:4, capo:0, src:'Fretline drill', text:'4/0:8 h2 4/0 h2 3/0 h2 3/0 h2 |\n2/0:8 h1 2/0 h3 1/0 h1 1/0 h3 |\n6/0:8 h3 5/0 h2 4/0 h2 3/0 h2 |\n2/0:8 h3 1/0 h3 1/0:2'},
   'drill-pull': {title:'Drill: pull-offs', drill:'pull', bpm:70, ts:4, capo:0, src:'Fretline drill', text:'1/3:8 p0 1/3 p0 2/3 p0 2/3 p0 |\n3/2:8 p0 3/2 p0 4/2 p0 4/2 p0 |\n1/3:8 p0 2/3 p0 3/2 p0 4/2 p0 |\n5/2:8 p0 6/3 p0 6/0:2'},
   'drill-slide': {title:'Drill: slides', drill:'slide', bpm:72, ts:4, capo:0, src:'guitar.com exercises 3 & 4', text:'3/7:4 s9 3/9 s11 |\n3/11:4 s9 3/9 s7 |\n2/5:4 s7 2/7 s5 |\n4/5:4 s7 4/7:2'},
@@ -1261,7 +1272,7 @@ function mvChecks(m, st){
     return [
       {label:`4 chord pairs at ${s.hi}+ changes a minute`, have:Math.min(fast, 4), need:4},
       {label:'2 strumming songs played with the track', have:Math.min(sd, 2), need:2},
-      {label:'2 lead riffs played with the track', have:Math.min(ld, 2), need:2},
+      {label:'2 Side B pieces done (an étude or tune at its goal tempo counts)', have:Math.min(ld, 2), need:2},
     ];
   }
   const chordsOk = m.chords.filter(c => { const x = chordSteps(c, st); return x.shape && x.changes; }).length;
@@ -1271,7 +1282,7 @@ function mvChecks(m, st){
   return [
     {label:`Every new chord learned and changing at ${CHORD_TARGET}+ a minute`, have:chordsOk, need:m.chords.length},
     {label:`${techs.map(t => TECHS[t].name).join(', ')}: drill${techs.length > 1 ? 's' : ''} played cleanly`, have:techOk, need:techs.length},
-    {label:'One song from this movement played with the track', have:songDone ? 1 : 0, need:1},
+    {label:'One song or Side B piece from this movement done', have:songDone ? 1 : 0, need:1},
   ];
 }
 function mvComplete(m, st){ return mvChecks(m, st).every(c => c.have >= c.need); }
@@ -1458,6 +1469,7 @@ const AudioEng = {
     if (o.bend != null){
       const t0 = time + Math.min(0.06, dur * 0.15), t1 = t0 + Math.min(0.24, dur * 0.4);
       pr.setValueAtTime(rate(fq(fret)), t0); pr.linearRampToValueAtTime(rate(fq(o.bend)), t1);
+      if (o.rel != null){ const t2 = Math.max(t1 + 0.04, time + dur * 0.6), t3 = Math.max(t2 + 0.05, time + dur * 0.85); pr.setValueAtTime(rate(fq(o.bend)), t2); pr.linearRampToValueAtTime(rate(fq(o.rel)), t3); }
     }
     const g = this.ctx.createGain();
     const base = kind === 'electric' ? 0.9 : 0.75;
@@ -1493,7 +1505,7 @@ const AudioEng = {
 /* =========================================================
    Riff notation: parser + tab renderer
    ========================================================= */
-const DUR = {'1':4, '2':2, '4':1, '8':0.5, '16':0.25};
+const DUR = {'1':4, '2':2, '4':1, '8':0.5, '16':0.25, '32':0.125, '4t':2/3, '8t':1/3, '16t':1/6}; // t = triplet
 function parseRiff(text){
   const events = []; const bars = []; const errors = [];
   let t = 0, dur = 1;
@@ -1507,7 +1519,7 @@ function parseRiff(text){
     if (dpart !== null){
       const dotted = dpart.endsWith('.');
       const base = DUR[dotted ? dpart.slice(0, -1) : dpart];
-      if (!base){ errors.push(`"${raw}": the length after ":" must be 1, 2, 4, 8 or 16 (add . for dotted).`); continue; }
+      if (!base){ errors.push(`"${raw}": the length after ":" must be 1, 2, 4, 8, 16 or 32 (add . for dotted, or t for a triplet: 8t).`); continue; }
       dur = dotted ? base * 1.5 : base;
     }
     if (body === 'r' || body === 'R'){ events.push({t, dur, rest:true, notes:[]}); t += dur; last = null; continue; }
@@ -1523,18 +1535,78 @@ function parseRiff(text){
     }
     const parts = body.split('+'); const notes = []; let bad = null;
     for (const p of parts){
-      const m = /^([1-6])\/(\d{1,2})(?:b(\d{1,2}))?(~)?$/.exec(p);
+      const m = /^([1-6])\/(\d{1,2})(?:b(\d{1,2})(?:r(\d{1,2}))?)?(~)?$/.exec(p);
       if (!m){ bad = `"${raw}" isn't a note. Write string/fret, like 5/7 (string 6 is the low E).`; break; }
       const f = Number(m[2]); if (f > 24){ bad = `"${raw}": frets go up to 24.`; break; }
       const n = {s:Number(m[1]), f};
       if (m[3] != null){ const b = Number(m[3]); if (b <= f || b > f + 3){ bad = `"${raw}": bend to a fret 1 to 3 above the one you fret.`; break; } n.bend = b; }
-      if (m[4]) n.vib = true;
+      if (m[4] != null){ const r = Number(m[4]); if (r >= n.bend || r < f){ bad = `"${raw}": release the bend back down, to a fret between ${f} and ${n.bend - 1}.`; break; } n.rel = r; }
+      if (m[5]) n.vib = true;
       notes.push(n);
     }
     if (bad){ errors.push(bad); continue; }
     events.push({t, dur, rest:false, notes}); t += dur; last = notes[0];
   }
   return {events, bars, errors, total:t};
+}
+/* ASCII tab (the kind on tab sites) → riff notation.
+   Reads 6-line systems, top line = high e. Understands h p / \ s b r ~ x, two-digit frets and chords.
+   Tab spacing isn't real rhythm, so every note gets the same length and the riff is marked free (use Follow mode). */
+function tabToRiff(ascii){
+  const lines = String(ascii || '').replace(/\t/g, '    ').split(/\r?\n/);
+  const isTab = l => { const d = (l.match(/-/g) || []).length; return d >= 4 && /^[\sa-gA-G#b1-6]{0,3}[|:]?[-0-9a-zA-Z\/\\~|().^*<>\[\]=+\s]*$/.test(l) && /[-|]{3}/.test(l); };
+  const systems = []; let cur = [];
+  for (const l of lines){ if (isTab(l)) cur.push(l); else { if (cur.length) systems.push(cur); cur = []; } }
+  if (cur.length) systems.push(cur);
+  const warn = []; const out = []; let notes = 0, skipped = 0, lastNote = null;
+  const six = systems.filter(s => s.length >= 6);
+  if (systems.length && !six.length) warn.push('Found tab lines, but not six of them together. Paste whole systems, all six strings.');
+  for (const sys0 of six){
+    for (let k = 0; k + 6 <= sys0.length; k += 6){
+      const sys = sys0.slice(k, k + 6).map(l => { const m = /^\s*[a-gA-G1-6]?[#b]?\s*[|:]?/.exec(l); return l.slice(m ? m[0].length : 0).replace(/\s+$/, ''); });
+      const W = Math.max(...sys.map(l => l.length));
+      const row = sys.map(l => l.padEnd(W, '-'));
+      const taken = row.map(() => new Set());
+      const sysOut = [];
+      for (let c = 0; c < W; c++){
+        if (row.every(l => l[c] === '|') || (row.filter(l => l[c] === '|').length >= 4)){ if (sysOut.length && sysOut[sysOut.length - 1] !== '|') sysOut.push('|'); continue; }
+        const here = [];
+        for (let i = 0; i < 6; i++){
+          if (taken[i].has(c)) continue;
+          const l = row[i]; const ch = l[c];
+          if (ch === 'x' || ch === 'X'){ skipped++; continue; }
+          if (!/\d/.test(ch) || /\d/.test(l[c - 1] || '')) continue;
+          let j = c; while (j < W && /\d/.test(l[j]) && j - c < 2) j++;
+          let f = Number(l.slice(c, j)); for (let q = c; q < j; q++) taken[i].add(q);
+          if (f > 24){ f = Number(l[c]); j = c + 1; }
+          // what came just before: a legato marker?
+          let b = c - 1; while (b >= 0 && /[()\s]/.test(l[b])) b--;
+          const pre = l[b];
+          const n = {s: i + 1, f, tech: pre === 'h' || pre === 'H' ? 'h' : pre === 'p' || pre === 'P' ? 'p' : pre === '/' || pre === '\\' || pre === 's' || pre === 'S' ? 's' : null};
+          // after: bend, release, vibrato
+          let a = j; const mb = /^[(]?[b^][(]?(\d{1,2})[)]?(?:[r][(]?(\d{1,2})[)]?)?/.exec(l.slice(a));
+          if (mb){ n.bend = Number(mb[1]); if (mb[2] != null) n.rel = Number(mb[2]); for (let q = a; q < a + mb[0].length; q++) taken[i].add(q); a += mb[0].length; }
+          else if (/^b/.test(l.slice(a))){ n.bend = f + 2; taken[i].add(a); a++; }   // "7b" with no target: a whole step
+          if (l[a] === '~'){ n.vib = true; }
+          if (n.bend != null && (n.bend <= f || n.bend > f + 3)) delete n.bend, delete n.rel;
+          if (n.rel != null && (n.rel >= n.bend || n.rel < f)) delete n.rel;
+          here.push(n);
+        }
+        if (!here.length) continue;
+        const legato = here.length === 1 && here[0].tech && lastNote && lastNote.s === here[0].s && !(here[0].tech === 'h' && here[0].f <= lastNote.f) && !(here[0].tech === 'p' && here[0].f >= lastNote.f) && here[0].f !== lastNote.f;
+        const suf = n => (n.bend != null ? 'b' + n.bend + (n.rel != null ? 'r' + n.rel : '') : '') + (n.vib ? '~' : '');
+        if (legato){ const n = here[0]; sysOut.push(n.tech + n.f + (n.vib ? '~' : '')); }
+        else sysOut.push(here.sort((x, y) => y.s - x.s).map(n => n.s + '/' + n.f + suf(n)).join('+'));
+        lastNote = here[0]; notes += here.length;
+      }
+      while (sysOut[0] === '|') sysOut.shift();
+      while (sysOut[sysOut.length - 1] === '|') sysOut.pop();
+      if (sysOut.length){ sysOut[0] = sysOut[0] + ':8'; out.push(sysOut.join(' ')); }
+    }
+  }
+  if (!notes && !warn.length) warn.push('No tab found. Paste the six lines of each system (e|---, B|---, …) exactly as the site shows them.');
+  if (skipped) warn.push(`${skipped} muted note${skipped > 1 ? 's' : ''} (x) left out.`);
+  return {text: out.join('\n'), notes, systems: out.length, warn};
 }
 function riffTechs(text){
   const set = new Set();
@@ -1544,7 +1616,7 @@ function riffTechs(text){
   }
   return [...set];
 }
-function noteLabel(n){ return String(n.f) + (n.bend != null ? 'b' + n.bend : '') + (n.vib ? '~' : ''); }
+function noteLabel(n){ return String(n.f) + (n.bend != null ? 'b' + n.bend : '') + (n.rel != null ? 'r' + n.rel : '') + (n.vib ? '~' : ''); }
 function tabSvg(events, active, riff, bars){
   const U = 52, MINW = 30, X0 = 40, Y0 = 26, DY = 19;
   let total = 0; events.forEach(e => total = Math.max(total, e.t + e.dur));
@@ -1642,8 +1714,18 @@ const cs = { // chord changes
   ramp:{on:false, step:4, every:4, max:120}, running:false,
 };
 const om = {pair:'D-G', phase:'idle', count:0, t0:0, cd:3, last:null, raf:0, timer:0};
-const lp = {riffId:'peter-gunn', sound:null, loop:true, click:false, countIn:true, playing:false, bpm:null, text:null, dirty:false};
+const lp = {riffId:'pent-threes', sound:null, loop:true, click:false, countIn:true, playing:false, bpm:null, text:null, dirty:false};
 const STATUS_LABEL = {new:'Not started', learning:'Learning', slow:'Slow version', done:'With the track'};
+// Side B: songs are done with the record; etudes and tunes are done at their target tempo.
+const leadKind = l => l.kind || 'song';
+const doneLabel = l => leadKind(l) === 'song' ? 'Done with the track' : 'Done at tempo';
+const leadStatusLabel = (l, stt) => stt === 'done' ? doneLabel(l) : STATUS_LABEL[stt];
+const leadSrc = l => leadKind(l) === 'song' ? 'Tab: ' + l.site : leadKind(l) === 'tune' ? 'Full tab · ' + l.src : 'Full tab · étude';
+function leadLinks(l, sm){
+  const c = 'btn' + (sm ? ' sm' : '');
+  if (leadKind(l) !== 'song') return l.kind === 'tune' ? `<a class="${c}" href="${ytq(l.title + (l.genre === 'Fiddle tune' ? ' fiddle tune' : ' ' + l.artist))}" target="_blank" rel="noopener">Hear it played</a>` : '';
+  return `<a class="${c}" href="${esc(l.tab)}" target="_blank" rel="noopener">Tab on ${esc(l.site)}</a>`;
+}
 
 /* =========================================================
    Rendering: shell
@@ -1804,11 +1886,11 @@ function viewToday(){
     <article class="slot lead-slot${Practice.kind === 'l' ? ' live' : ''}">
       <div class="top"><span class="num"><b>03</b> Lead · ${leadTrackNo(lead.id)}</span><span class="min">${s.blocks[2]} min</span></div>
       <h3>${esc(lead.title)}</h3>
-      <div class="row">${techPills(lead)}<span class="chip">${esc(lead.genre)}</span>${lstate !== 'new' ? `<span class="chip">${esc(STATUS_LABEL[lstate])}</span>` : ''}</div>
+      <div class="row">${techPills(lead)}<span class="chip">${esc(lead.genre)}</span>${lead.goalBpm ? `<span class="chip">goal ${lead.goalBpm} bpm</span>` : ''}${lstate !== 'new' ? `<span class="chip">${esc(leadStatusLabel(lead, lstate))}</span>` : ''}</div>
       <p class="why">${esc(lead.tip)}</p>
       <div class="acts">
         ${lead.riff ? `<button class="btn lead sm" data-act="open-riff" data-id="${lead.riff}" type="button">Open in Lead player</button>` : ''}
-        <a class="btn sm" href="${esc(lead.tab)}" target="_blank" rel="noopener">Tab on ${esc(lead.site)}</a>
+        ${leadLinks(lead, true)}
       </div>
     </article>
   </section>
@@ -2112,7 +2194,7 @@ function viewJourney(){
   const lead = path.map((l, i) => {
     const stt = songState(l.id).status;
     const node = stt === 'done' ? 'done' : (i === leadFirst ? 'lead-ready cur' : '');
-    const pill = stt === 'done' ? `<span class="pill done">Done with the track</span>` : stt !== 'new' ? `<span class="pill lead">${esc(STATUS_LABEL[stt])}</span>` : i === leadFirst ? `<span class="pill lead">Up next</span>` : '';
+    const pill = stt === 'done' ? `<span class="pill done">${doneLabel(l)}</span>` : stt !== 'new' ? `<span class="pill lead">${esc(STATUS_LABEL[stt])}</span>` : i === leadFirst ? `<span class="pill lead">Up next</span>` : '';
     return `<li><div class="node ${node}${l.goal ? ' goal' : ''}"><span>${l.goal ? '★' : esc(leadTrackNo(l.id))}</span></div><div class="body"><div><button class="t" type="button" data-act="open-lead" data-id="${l.id}">${esc(l.title)}</button></div><div class="sub">${esc(l.artist)} · ${esc(l.genre)}${l.tech.some(t => t !== 'picked') ? ' · ' + l.tech.map(t => TECHS[t].name.toLowerCase()).join(', ') : ''}</div>${pill ? `<div class="row">${pill}</div>` : ''}</div></li>`;
   }).join('');
   const leadLater = leadOrderAll().filter(l => !leadInPlay(l));
@@ -2125,12 +2207,12 @@ function viewJourney(){
   const doneS = order.filter(x => songState(x.s.id).status === 'done').length;
   const doneL = path.filter(l => songState(l.id).status === 'done').length;
   return `
-  ${head('Journeys', 'From your first song to Wish You Were Here', 'Side A is strumming, ordered by how fast the chord changes come. Side B is lead. A song turns ready when every change it uses is at or above the speed it needs, and counts as done only after you play it with the track.')}
+  ${head('Journeys', 'From your first song to Wish You Were Here', 'Side A is strumming, ordered by how fast the chord changes come. Side B is lead: études and traditional tunes with full tabs, then real songs, ordered by technique. A Side A song turns ready when every change it uses is up to speed. Songs count as done after you play them with the track; études and tunes, at their goal tempo.')}
   <div class="lanes">
     <section class="card side-a"><div class="sec-h"><h3><span class="sidetag">A</span>Strumming</h3><span class="mono muted">${doneS}/${order.length} done</span></div><ol class="path">${strum}</ol>
       ${laterBlock(later.map(x => ({mv:x.s.mv, title:x.s.title})), 'Later on Side A')}</section>
     <section class="card side-b"><div class="sec-h"><h3><span class="sidetag lead">B</span>Lead</h3><span class="mono muted">${doneL}/${path.length} done</span></div>
-    <p class="note">${path.every(l => l.tech.every(t => t === 'picked')) ? 'Plain picked notes only for now. Riffs with hammer-ons, slides and bends join this side as you learn each technique.' : 'Riffs join this side as you learn the techniques they use.'}</p><ol class="path">${lead}</ol>
+    <p class="note">${path.every(l => l.tech.every(t => t === 'picked')) ? 'Picking only for now: pentatonic patterns and fiddle tunes, which train alternate picking across strings. Pieces with hammer-ons, slides and bends join this side as you learn each technique.' : 'Riffs join this side as you learn the techniques they use.'}</p><ol class="path">${lead}</ol>
       ${laterBlock(leadLater.map(l => ({mv:leadMv(l), title:l.title})), 'Later on Side B')}</section>
   </div>`;
 }
@@ -2168,11 +2250,11 @@ function viewLibrary(){
     rows.push(`<button type="button" class="srow" data-act="open-lead" data-id="${l.id}">
       <div><div class="kind l"><span class="trkno">${leadTrackNo(l.id)}</span>Lead · Movement ${MOVEMENTS[leadMv(l) - 1].num}</div><div class="t">${esc(l.title)}</div><div class="a">${esc(l.artist)} · ${esc(l.genre)}</div></div>
       <div class="cs">${techPills(l)}</div>
-      <div class="rd"><span>Tab: ${esc(l.site)}${l.riff ? ' · in Lead player' : ''}</span></div>
+      <div class="rd"><span>${esc(leadSrc(l))}${l.riff ? ' · in Lead player' : ''}</span></div>
       <div class="st">${stt === 'done' ? '<span class="pill done">Done</span>' : stt !== 'new' ? `<span class="pill lead">${esc(STATUS_LABEL[stt])}</span>` : leadInPlay(l) ? '<span class="pill build">Not started</span>' : '<span class="pill build">Later</span>'}</div></button>`);
   }
   return `
-  ${head('Library', `${songs.length} strumming songs, ${LEAD.length} lead riffs`, 'Songs are grouped by the movement whose chords they need. Tempos come from the recordings; songs marked as estimates are worth checking by ear.', tabs)}
+  ${head('Library', `${songs.length} strumming songs, ${LEAD.length} lead pieces`, 'Songs are grouped by the movement whose chords they need. Tempos come from the recordings; songs marked as estimates are worth checking by ear.', tabs)}
   <div class="filters">
     <div class="seg" role="group" aria-label="Type">${[['all','All'],['strum','Side A'],['lead','Side B']].map(([v, l]) => `<button type="button" data-act="lib" data-k="kind" data-v="${v}" aria-pressed="${f.kind === v}">${l}</button>`).join('')}</div>
     <select id="libGenre" data-act="libsel" data-k="genre" aria-label="Genre"><option value="all">All genres</option>${genres.map(g => `<option ${f.genre === g ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select>
@@ -2242,9 +2324,9 @@ function renderDrawer(){
   host.innerHTML = `<div class="scrim" data-act="close-drawer"></div><aside class="drawer" role="dialog" aria-modal="true" aria-label="Song details">${kind === 'song' ? songDrawer(id) : leadDrawer(id)}</aside>`;
   const x = host.querySelector('.x'); if (x) x.focus();
 }
-function statusSeg(id){
+function statusSeg(id, labels){
   const stt = songState(id).status;
-  return `<div class="statusseg" role="group" aria-label="Status">${Object.entries(STATUS_LABEL).map(([k, v]) => `<button type="button" class="${k === 'done' ? 'fin' : ''}" data-act="status" data-id="${id}" data-v="${k}" aria-pressed="${stt === k}">${esc(v)}</button>`).join('')}</div>`;
+  return `<div class="statusseg" role="group" aria-label="Status">${Object.entries(labels || STATUS_LABEL).map(([k, v]) => `<button type="button" class="${k === 'done' ? 'fin' : ''}" data-act="status" data-id="${id}" data-v="${k}" aria-pressed="${stt === k}">${esc(v)}</button>`).join('')}</div>`;
 }
 function songDrawer(id){
   const s = songById(id); if (!s) return '';
@@ -2286,21 +2368,23 @@ function leadDrawer(id){
   const l = leadById(id); if (!l) return '';
   const state = songState(id); const riff = l.riff ? riffData(l.riff) : null;
   const needs = l.tech.filter(t => t !== 'picked');
-  const inPlay = leadInPlay(l);
+  const inPlay = leadInPlay(l); const kind = leadKind(l);
+  const doneBtn = kind === 'song' ? 'I played it with the track' : l.goalBpm ? `I played it at ${l.goalBpm} bpm` : 'I can play it through, in time and in tune';
   return `
     <button class="btn sm x" data-act="close-drawer" type="button" aria-label="Close">Close</button>
     <div style="display:grid;gap:6px"><div class="eyebrow">${leadTrackNo(id)} · Side B · Movement ${MOVEMENTS[leadMv(l) - 1].num} · ${esc(l.genre)}</div><h2>${esc(l.title)}</h2><p class="muted">${esc(l.artist)}</p></div>
     <div class="row">${techPills(l)}${riff && riff.approx ? '<span class="pill warn">Rhythm is approximate</span>' : ''}</div>
     <p>${esc(l.tip)}</p>
-    ${needs.length ? `<div class="card inner"><div class="eyebrow">Techniques it uses</div><ul class="checks">${needs.map(t => `<li class="${techLearned(t) ? 'ok' : ''}"><i class="led ${techLearned(t) ? 'ok' : 'off'}"></i><span>${esc(TECHS[t].name)}</span><button class="btn sm ghost" data-act="open-riff" data-id="${TECHS[t].drill}" type="button">Drill</button></li>`).join('')}</ul>${!inPlay ? '<p class="note">This riff joins Side B once those drills are learned. The tab is here if you want an early look.</p>' : ''}</div>` : ''}
+    ${kind !== 'song' ? `<div class="factrow">${l.key ? `<span><b>Key</b>${esc(l.key)}</span>` : ''}${riff ? `<span><b>Start at</b>${riff.free ? 'your own pace' : riff.bpm + ' bpm'}</span>` : ''}${l.goalBpm ? `<span><b>Goal</b>${l.goalBpm} bpm</span>` : ''}<span><b>Source</b>${esc(kind === 'tune' ? l.src : 'Original exercise, written for Fretline')}</span></div>` : ''}
+    ${needs.length ? `<div class="card inner"><div class="eyebrow">Techniques it uses</div><ul class="checks">${needs.map(t => `<li class="${techLearned(t) ? 'ok' : ''}"><i class="led ${techLearned(t) ? 'ok' : 'off'}"></i><span>${esc(TECHS[t].name)}</span><button class="btn sm ghost" data-act="open-riff" data-id="${TECHS[t].drill}" type="button">Drill</button></li>`).join('')}</ul>${!inPlay ? '<p class="note">This joins your path once those drills are learned. The tab is here if you want an early look.</p>' : ''}</div>` : ''}
     <div class="row">
       ${l.riff ? `<button class="btn lead" data-act="open-riff" data-id="${l.riff}" type="button">Open in Lead player</button>` : ''}
-      <a class="btn" href="${esc(l.tab)}" target="_blank" rel="noopener">Tab on ${esc(l.site)}</a>
-      <a class="btn" href="${ytq(l.artist.split(' / ')[0] + ' ' + l.title)}" target="_blank" rel="noopener">Find the track</a>
+      ${leadLinks(l)}
+      ${kind === 'song' ? `<a class="btn" href="${ytq(l.artist.split(' / ')[0] + ' ' + l.title)}" target="_blank" rel="noopener">Find the track</a><button class="btn ghost" data-act="pastetab" data-title="${esc(l.title)}" type="button">Paste its tab</button>` : ''}
     </div>
     ${riff ? `<div class="tabwrap">${tabSvg(parseRiff(riff.text).events, -1, riff)}</div>` : ''}
-    <div class="confirmbox"><div class="eyebrow">Your status</div>${statusSeg(id)}
-      ${state.status !== 'done' ? `<button class="btn primary" data-act="status" data-id="${id}" data-v="done" type="button">I played it with the track</button>` : `<p class="note">Confirmed ${state.confirmedAt ? esc(fmtDay(dk(new Date(state.confirmedAt)))) : ''}.</p>`}</div>
+    <div class="confirmbox"><div class="eyebrow">Your status</div>${statusSeg(id, kind === 'song' ? null : Object.assign({}, STATUS_LABEL, {done:'At tempo'}))}
+      ${state.status !== 'done' ? `<button class="btn primary" data-act="status" data-id="${id}" data-v="done" type="button">${doneBtn}</button>` : `<p class="note">Confirmed ${state.confirmedAt ? esc(fmtDay(dk(new Date(state.confirmedAt)))) : ''}.</p>`}</div>
     <div class="field"><label for="songNote">Notes</label><textarea id="songNote" rows="3" data-act="note" data-id="${id}" placeholder="Fingering, tempo you can manage, tricky spots">${esc(state.note || '')}</textarea></div>`;
 }
 
@@ -2311,13 +2395,30 @@ function riffData(id){
   const over = store.data.riffs.map[id];
   const base = RIFFS[id];
   if (base) return Object.assign({id, custom:false}, base, over ? {text: over.text, bpm: over.bpm || base.bpm, edited:true} : {});
-  if (over) return Object.assign({id, custom:true, ts:4, capo:0, src:'Your riff'}, over);
+  if (over && over.custom) return Object.assign({id, custom:true, ts:4, capo:0, src: over.pasted ? 'Pasted tab' : 'Your riff'}, over);
   return null;
 }
 function drillVisible(id){ const t = RIFFS[id].drill; return t && mvOpen(TECHS[t].mv); }
-function riffIds(){ return [...Object.keys(RIFFS).filter(k => !RIFFS[k].drill || drillVisible(k) || k === lp.riffId), ...Object.keys(store.data.riffs.map).filter(k => !RIFFS[k])]; }
+function riffIds(){ return [...Object.keys(RIFFS).filter(k => !RIFFS[k].drill || drillVisible(k) || k === lp.riffId), ...customIds()]; }
+function customIds(){ return Object.keys(store.data.riffs.map).filter(k => !RIFFS[k] && store.data.riffs.map[k] && store.data.riffs.map[k].custom); }
+function pastePreview(){
+  const r = tabToRiff(lp.paste ? lp.paste.text : '');
+  if (!r.notes) return `<span class="note">${esc(r.warn[0] || '')}</span>`;
+  const p = parseRiff(r.text);
+  return `<div class="note">${r.notes} notes in ${r.systems} line${r.systems > 1 ? 's' : ''}${riffTechs(r.text).length ? ' · uses ' + riffTechs(r.text).map(t => TECHS[t].name.toLowerCase()).join(', ') : ''}${r.warn.length ? ' · ' + r.warn.map(esc).join(' ') : ''}</div><div class="tabwrap">${tabSvg(p.events, -1, {ts:4}, p.bars)}</div>`;
+}
+function pasteCard(){
+  const P = lp.paste;
+  return `<section class="card editor paste" aria-label="Paste a tab">
+    <div class="sec-h"><h3>Paste a tab</h3><div class="row"><button class="btn sm ghost" data-act="pastecancel" type="button">Cancel</button><button class="btn sm primary" data-act="pasteadd" type="button">Add to Your riffs</button></div></div>
+    <p class="note">Copy the tab from the site (all six lines of each system, e|--- down to E|---) and paste it here. Hammer-ons, pull-offs, slides, bends and vibrato come across. Tab spacing isn’t rhythm, so the riff opens in <b>Follow mode</b>: play along with the record and it moves on when it hears the right note.</p>
+    <div class="field"><label for="pasteTitle">Title</label><input type="text" id="pasteTitle" data-act="pastetitle" value="${esc(P.title)}" placeholder="Song and part, e.g. Layla riff"></div>
+    <textarea id="pasteText" class="pastebox" data-act="pastetext" spellcheck="false" aria-label="Tab" placeholder="e|-----------------|&#10;B|-----------5h8---|&#10;G|-------5-7-------|&#10;D|---5-7-----------|&#10;A|-7---------------|&#10;E|-----------------|">${esc(P.text)}</textarea>
+    <div id="pastePrev">${pastePreview()}</div>
+  </section>`;
+}
 function viewLead(){
-  if (!riffData(lp.riffId)) lp.riffId = 'peter-gunn';
+  if (!riffData(lp.riffId)) lp.riffId = 'pent-threes';
   const r = riffData(lp.riffId);
   const text = lp.text !== null ? lp.text : r.text;
   const bpm = lp.bpm || r.bpm;
@@ -2326,26 +2427,27 @@ function viewLead(){
   const leadFor = id => LEAD.find(l => l.riff === id);
   const pathRiffs = leadOrderAll().filter(l => l.riff).map(l => l.riff);
   const drills = Object.keys(RIFFS).filter(k => RIFFS[k].drill && (drillVisible(k) || k === lp.riffId));
-  const customs = Object.keys(store.data.riffs.map).filter(k => !RIFFS[k]);
+  const customs = customIds();
   const item = (id, sub) => { const d = riffData(id); return `<button type="button" role="listitem" data-act="pickriff" data-id="${id}" aria-current="${id === lp.riffId}"><b>${esc(d.title)}</b><span>${sub}</span></button>`; };
   const list = `<div class="rifflist" role="list">
-    <div class="grp">Side B</div>
-    ${pathRiffs.map(id => { const d = riffData(id); const l = leadFor(id); const stt = l ? songState(l.id).status : 'new'; return item(id, `${l ? leadTrackNo(l.id) + ' · ' : ''}${d.free ? 'follow mode' : d.bpm + ' bpm'}${l && l.check === 'unchecked' ? ' · notes unchecked' : l && (l.check === 'ok' || l.check === 'fixed') ? ' · notes checked' : ''}${stt === 'done' ? ' · done' : stt !== 'new' ? ' · ' + esc(STATUS_LABEL[stt]) : ''}${d.edited ? ' · edited' : ''}`); }).join('')}
+    ${pathRiffs.map((id, i) => { const lg = leadFor(id), pm = i ? leadMv(leadFor(pathRiffs[i - 1])) : 0, mvn = leadMv(lg); const hd = mvn !== pm ? `<div class="grp">Side B · Movement ${MOVEMENTS[mvn - 1].num}${mvOpen(mvn) ? '' : ' · later'}</div>` : ''; return hd + (() => { const d = riffData(id); const l = leadFor(id); const stt = l ? songState(l.id).status : 'new'; return item(id, `${l ? leadTrackNo(l.id) + ' · ' : ''}${d.free ? 'follow mode' : d.bpm + ' bpm'}${l && l.check === 'unchecked' ? ' · notes unchecked' : l && (l.check === 'ok' || l.check === 'fixed') ? ' · notes checked' : ''}${l && l.goalBpm > d.bpm ? ' → ' + l.goalBpm : ''}${stt === 'done' ? ' · done' : stt !== 'new' ? ' · ' + esc(STATUS_LABEL[stt]) : ''}${d.edited ? ' · edited' : ''}`); })(); }).join('')}
     ${drills.length ? `<div class="grp">Technique drills</div>${drills.map(id => item(id, `${RIFFS[id].bpm} bpm${techLearned(RIFFS[id].drill) ? ' · learned' : ''}`)).join('')}` : ''}
-    ${customs.length ? `<div class="grp">Your riffs</div>${customs.map(id => item(id, riffData(id).bpm + ' bpm')).join('')}` : ''}
-    <div style="padding:8px 6px"><button class="btn sm" data-act="newriff" type="button">New riff</button></div>
+    ${customs.length ? `<div class="grp">Your riffs</div>${customs.map(id => item(id, riffData(id).free ? 'follow mode' : riffData(id).bpm + ' bpm')).join('')}` : ''}
+    <div class="row" style="padding:8px 6px"><button class="btn sm" data-act="pastetab" type="button">Paste a tab</button><button class="btn sm ghost" data-act="newriff" type="button">New riff</button></div>
   </div>`;
   const l = leadFor(lp.riffId);
   const isDrill = !!r.drill;
   const used = riffTechs(text);
-  const side = l ? `<div class="row"><a class="btn" href="${esc(l.tab)}" target="_blank" rel="noopener">Tab on ${esc(l.site)}</a><button class="btn" data-act="open-lead" data-id="${l.id}" type="button">Mark progress</button></div>`
+  const side = l ? `<div class="row">${leadLinks(l)}<button class="btn" data-act="open-lead" data-id="${l.id}" type="button">Mark progress</button></div>`
     : isDrill ? `<div class="row">${techLearned(r.drill) ? `<span class="pill done">Learned</span><button class="btn sm ghost" data-act="tech" data-t="${r.drill}" data-v="0" type="button">Not yet</button>` : `<button class="btn lead" data-act="tech" data-t="${r.drill}" data-v="1" type="button">I can play this cleanly</button>`}</div>` : '';
-  const intro = isDrill ? esc(TECHS[r.drill].how) : r.free ? `Notes from ${esc(r.src || 'the tab')}. The source has no rhythm, so playback uses even notes. Use <b>Follow mode</b>: play along with the song, and the app moves to the next note when the mic hears the right pitch.` : `Type the notes, and the app plays them back while the tab lights up. ${r.approx ? 'The notes come from the linked tab; the rhythm is my best reading, so check it against the record and fix it here.' : `Notes from ${esc(r.src || 'the tab')}.`}`;
+  const kind = l ? leadKind(l) : null;
+  const intro = isDrill ? esc(TECHS[r.drill].how) : kind === 'etude' || kind === 'tune' ? `${esc(l.tip)} <span class="srcline">${kind === 'tune' ? esc(l.src) + ' · ' + esc(l.key) : 'Fretline étude · ' + esc(l.key)}${l.goalBpm ? ` · start at ${r.bpm}, goal ${l.goalBpm} bpm` : r.free ? ' · your own pace, in Follow mode' : ''}</span>` : r.pasted ? 'Pasted from a tab. The notes and techniques come across; the rhythm doesn’t, so use <b>Follow mode</b> with the record, or add lengths (<code>:4</code>, <code>:8</code>) in the notes below.' : r.free ? `Notes from ${esc(r.src || 'the tab')}. The source has no rhythm, so playback uses even notes. Use <b>Follow mode</b>: play along with the song, and the app moves to the next note when the mic hears the right pitch.` : `Type the notes, and the app plays them back while the tab lights up. ${r.approx ? 'The notes come from the linked tab; the rhythm is my best reading, so check it against the record and fix it here.' : `Notes from ${esc(r.src || 'the tab')}.`}`;
   return `
   ${head(isDrill ? 'Lead player · technique drill' : 'Lead player', esc(r.title), intro, side)}
   <div class="leadgrid">
     ${list}
     <div style="display:grid;gap:16px;min-width:0">
+      ${lp.paste ? pasteCard() : ''}
       <div class="riffpick row"><select id="riffSel" data-act="riffsel" aria-label="Riff" style="flex:1 1 200px">${riffIds().map(id => `<option value="${id}" ${id === lp.riffId ? 'selected' : ''}>${esc(riffData(id).title)}</option>`).join('')}</select><button class="btn sm" data-act="newriff" type="button">New riff</button></div>
       <section class="stage">
         <div class="trainline">
@@ -2376,10 +2478,11 @@ function viewLead(){
         <div class="legend">
           <span><code>5/7</code> string 5, fret 7</span><span><code>6</code> = low E, <code>1</code> = high e</span>
           <span><code>:4</code> quarter, <code>:8</code> eighth</span><span><code>:2</code> half, <code>:16</code> sixteenth</span>
-          <span><code>:4.</code> dotted quarter</span><span><code>r</code> rest, <code>|</code> bar line</span>
+          <span><code>:4.</code> dotted quarter</span><span><code>:8t</code> triplet eighth, <code>:16t</code> sextuplet</span>
+          <span><code>:32</code> thirty-second</span><span><code>r</code> rest, <code>|</code> bar line</span>
           <span><code>4/5+3/5</code> two notes together</span><span>Lengths carry over until changed</span>
           <span><code>h7</code> hammer-on to fret 7</span><span><code>p5</code> pull-off to fret 5</span>
-          <span><code>s9</code> slide to fret 9</span><span><code>3/7b9</code> bend fret 7 up to 9's pitch</span>
+          <span><code>s9</code> slide to fret 9</span><span><code>3/7b9</code> bend fret 7 up to 9's pitch</span><span><code>3/7b9r7</code> bend, then release</span>
           <span><code>3/7~</code> vibrato</span><span>h, p and s stay on the previous note's string</span>
         </div>
       </section>
@@ -3935,6 +4038,12 @@ function targets(){
   const e = fl.events[fl.idx]; if (!e) return [];
   return e.notes.map(n => OPEN_MIDI[n.s] + (n.bend != null ? n.bend : n.f) + lpCapo());
 }
+// pitches that count for this step: a bent note can be caught before, at or after the bend
+function accepts(){
+  const e = fl.events[fl.idx]; if (!e) return [];
+  const out = []; for (const n of e.notes){ const b = OPEN_MIDI[n.s] + lpCapo(); out.push(b + n.f); if (n.bend != null) out.push(b + n.bend); if (n.rel != null) out.push(b + n.rel); }
+  return out;
+}
 function targetLabel(){ const e = fl.events[fl.idx]; if (!e) return ''; return e.notes.map(n => `${noteLabel(n)} on the ${['', 'high e', 'B', 'G', 'D', 'A', 'low E'][n.s]} string`).join(' + ') + ` (${targets().map(midiName).join(', ')})`; }
 function flArm(src){ fl.armedAt = performance.now(); fl.armSrc = src; fl.count = 0; fl.stable = null; }
 // McLeod-style pitch detection on a 2x-decimated buffer (24 kHz) — guitar range 70 Hz to 1.1 kHz.
@@ -3968,17 +4077,20 @@ function flLoop(){
   // a sudden rise in level also counts as a new note, in case the onset detector missed a soft pluck
   if (p.rms > 0.006 && p.rms > fl.rms * 1.8) flArm('level');
   fl.rms = fl.rms * 0.7 + p.rms * 0.3;
-  if (fl.armedAt && performance.now() - fl.armedAt < 400 && p.f){
+  if (p.f){
     const m = Math.round(69 + 12 * Math.log2(p.f / 440));
     if (fl.stable === m) fl.count++; else { fl.stable = m; fl.count = 1; }
-    if (fl.count >= 3){ fl.armedAt = 0; flJudge(m); }
-  }
+    if (fl.armedAt && performance.now() - fl.armedAt < 400 && fl.count >= 3){ fl.armedAt = 0; fl.lastM = m; flJudge(m); }
+    // hammer-ons, pull-offs and slides aren't picked: a new pitch that settles counts as a new note
+    else if (!fl.armedAt && fl.count >= 4 && m !== fl.lastM && legatoStep()){ fl.lastM = m; flJudge(m); }
+  } else if (p.rms < 0.004) fl.lastM = null;
   if (fl.flash && performance.now() > fl.flash){ fl.flash = 0; $$('#tabBox .col.bad').forEach(g => g.classList.remove('bad')); }
   fl.raf = requestAnimationFrame(flLoop);
 }
+function legatoStep(){ const e = fl.events[fl.idx]; return !!(e && e.notes.some(n => n.tech)); }
 function flJudge(m){
   if (fl.done) return;
-  const t = targets();
+  const t = accepts();
   const hit = t.some(x => x === m || Math.abs(x - m) === 12);   // the same note an octave off still counts
   if (hit){
     fl.ok++;
@@ -3986,7 +4098,7 @@ function flJudge(m){
     if (k >= fl.order.length - 1){ fl.done = true; fl.idx = -1; fl.msg = `Done: all ${fl.order.length} notes${fl.wrong ? `, ${fl.wrong} off along the way` : ' with none off'}. Press Follow mode again to restart.`; flPaint(); flMsg(); return; }
     fl.idx = fl.order[k + 1]; fl.msg = `Good. Next: ${targetLabel()}.`;
   } else {
-    fl.wrong++; fl.msg = `Heard ${midiName(m)}; this note is ${t.map(midiName).join(' or ')}.`;
+    fl.wrong++; fl.msg = `Heard ${midiName(m)}; this note is ${targets().map(midiName).join(' or ')}.`;
     const g = $(`#tabBox .col[data-ev="${fl.idx}"]`); if (g){ g.classList.add('bad'); fl.flash = performance.now() + 450; }
   }
   flPaint(); flMsg();
@@ -4492,13 +4604,23 @@ document.addEventListener('click', e => {
     case 'riffsave': {
       const {r, text, bpm} = lpCurrent();
       const t = $('#riffTitle');
-      store.data.riffs.map[lp.riffId] = r.custom ? {title: (t && t.value.trim()) || r.title, text, bpm, ts: r.ts || 4, custom:true} : {text, bpm};
+      store.data.riffs.map[lp.riffId] = r.custom ? Object.assign({}, store.data.riffs.map[lp.riffId], {title: (t && t.value.trim()) || r.title, text, bpm, ts: r.ts || 4, custom:true}) : {text, bpm};
       touch('riffs'); lp.dirty = false; lp.text = null; lp.bpm = null; toast('Riff saved.'); render(); break;
     }
     case 'riffreset': delete store.data.riffs.map[lp.riffId]; touch('riffs'); lp.text = null; lp.bpm = null; lp.dirty = false; toast('Back to the original.'); render(); break;
     case 'riffdel': {
       if (el.dataset.armed !== '1'){ el.dataset.armed = '1'; el.textContent = 'Tap again to delete'; setTimeout(() => { if (el.isConnected){ el.dataset.armed = ''; el.textContent = 'Delete riff'; } }, 3000); return; }
-      lpStop(); delete store.data.riffs.map[lp.riffId]; touch('riffs'); lp.riffId = 'peter-gunn'; lp.text = null; lp.bpm = null; lp.dirty = false; toast('Riff deleted.'); render(); break;
+      lpStop(); delete store.data.riffs.map[lp.riffId]; touch('riffs'); lp.riffId = 'pent-threes'; lp.text = null; lp.bpm = null; lp.dirty = false; toast('Riff deleted.'); render(); break;
+    }
+    case 'pastetab': lpStop(); flStop(true); lp.paste = {title: el.dataset.title || '', text: ''}; ui.drawer = null; renderDrawer(); go('lead'); setTimeout(() => { const t = $('#pasteText'); if (t) t.focus(); }, 30); break;
+    case 'pastecancel': lp.paste = null; render(); break;
+    case 'pasteadd': {
+      const P = lp.paste; if (!P) break;
+      const r = tabToRiff(P.text); if (!r.notes){ toast(r.warn[0] || 'No tab found.'); break; }
+      const id = 'my-' + Date.now().toString(36);
+      store.data.riffs.map[id] = {title: (P.title || '').trim() || 'Pasted tab', text: r.text, bpm: 70, ts: 4, free: true, custom: true, pasted: true};
+      touch('riffs'); lp.paste = null; lp.riffId = id; lp.text = null; lp.bpm = null; lp.dirty = false;
+      toast(`Added to Your riffs: ${r.notes} notes.`); render(); break;
     }
     case 'newriff': {
       lpStop(); const id = 'my-' + Date.now().toString(36);
@@ -4538,6 +4660,10 @@ document.addEventListener('input', e => {
   else if (a === 'cf') ui.cf[el.dataset.k] = el.value;
   else if (a === 'note'){ const id = el.dataset.id; clearTimeout(noteTimer); noteTimer = setTimeout(() => setSongState(id, {note: el.value}), 500); }
   else if (a === 'rifftext'){ lp.text = el.value; lp.dirty = true; clearTimeout(riffTimer); riffTimer = setTimeout(lpRetab, 250); const sv = $('#riffSave'); if (sv) sv.disabled = false; }
+  else if (a === 'pastetext' || a === 'pastetitle'){
+    if (!lp.paste) return; lp.paste[a === 'pastetext' ? 'text' : 'title'] = el.value;
+    if (a === 'pastetext'){ clearTimeout(riffTimer); riffTimer = setTimeout(() => { const b = $('#pastePrev'); if (b) b.innerHTML = pastePreview(); }, 250); }
+  }
   else if (a === 'rifftitle'){ lp.dirty = true; const sv = $('#riffSave'); if (sv) sv.disabled = false; if (lp.text === null) lp.text = lpCurrent().text; }
 });
 document.addEventListener('keydown', e => {
