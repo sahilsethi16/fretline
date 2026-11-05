@@ -462,6 +462,8 @@ ul.mvsongs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .tabwrap .lab{fill:var(--muted);font:600 11px var(--f-mono)}
 .tabwrap .fr{fill:var(--ink);font:600 13px var(--f-mono)}
 .tabwrap .frbg{fill:var(--surface-2)}
+.tabwrap .lyr{fill:var(--accent);font:italic 500 13px var(--f-body)}
+.tabwrap .col.on .lyr{fill:var(--lead);font-weight:700}
 .tabwrap .rest{fill:var(--faint);font:600 12px var(--f-mono)}
 .tabwrap .dur{fill:var(--line-2)}
 .tabwrap .tq{fill:var(--lead);font:600 10px var(--f-mono)}
@@ -1528,7 +1530,17 @@ function parseRiff(text){
   const events = []; const bars = []; const errors = [];
   let t = 0, dur = 1;
   let last = null; // last sounded note, for h/p/s
-  const toks = String(text || '').replace(/\|/g, ' | ').split(/\s+/).filter(Boolean);
+  // a line starting with > holds lyrics: one word per note of the line above (_ skips a note)
+  let lineStart = 0;
+  for (const ln of String(text || '').split(/\r?\n/)){
+  const tr = ln.trim();
+  if (tr.startsWith('>')){
+    const evs = events.slice(lineStart).filter(e => !e.rest);
+    tr.slice(1).trim().split(/\s+/).filter(Boolean).forEach((w, i) => { if (evs[i] && w !== '_') evs[i].lyric = w.replace(/_/g, ' '); });
+    continue;
+  }
+  lineStart = events.length;
+  const toks = ln.replace(/\|/g, ' | ').split(/\s+/).filter(Boolean);
   for (const raw of toks){
     if (raw === '|'){ if (!bars.length || bars[bars.length-1] !== t) bars.push(t); continue; }
     let body = raw, dpart = null;
@@ -1565,29 +1577,37 @@ function parseRiff(text){
     if (bad){ errors.push(bad); continue; }
     events.push({t, dur, rest:false, notes}); t += dur; last = notes[0];
   }
+  }
   return {events, bars, errors, total:t};
 }
 /* ASCII tab (the kind on tab sites) → riff notation.
    Reads 6-line systems, top line = high e. Understands h p / \ s b r ~ x, two-digit frets and chords.
-   Tab spacing isn't real rhythm, so every note gets the same length and the riff is marked free (use Follow mode). */
-function tabToRiff(ascii){
+   Rhythm comes from the spacing: with bar lines, each bar is 4 beats split by how far apart the notes sit;
+   without, the tightest gap counts as an eighth. It's approximate, so check it by ear. {even:true} gives equal notes.
+   A line of words right above or below a system becomes lyrics, each word on the note it sits over. */
+const BEAT_TOK = [[4,'1'],[3,'2.'],[2,'2'],[1.5,'4.'],[1,'4'],[0.75,'8.'],[0.5,'8'],[1/3,'8t'],[0.25,'16']];
+function beatTok(b){ let best = BEAT_TOK[0]; for (const x of BEAT_TOK) if (Math.abs(x[0] - b) < Math.abs(best[0] - b)) best = x; return best; }
+function tabToRiff(ascii, opt){
+  opt = opt || {};
   const lines = String(ascii || '').replace(/\t/g, '    ').split(/\r?\n/);
   const isTab = l => { const d = (l.match(/-/g) || []).length; return d >= 4 && /^[\sa-gA-G#b1-6]{0,3}[|:]?[-0-9a-zA-Z\/\\~|().^*<>\[\]=+\s]*$/.test(l) && /[-|]{3}/.test(l); };
-  const systems = []; let cur = [];
-  for (const l of lines){ if (isTab(l)) cur.push(l); else { if (cur.length) systems.push(cur); cur = []; } }
-  if (cur.length) systems.push(cur);
-  const warn = []; const out = []; let notes = 0, skipped = 0, lastNote = null;
-  const six = systems.filter(s => s.length >= 6);
+  const isWords = l => l.trim() && !isTab(l) && /[A-Za-zऀ-ॿ]{2,}/.test(l) && !/^\s*(intro|verse|chorus|bridge|outro|solo|riff|tab|tuning|capo|\[)/i.test(l) && l.trim().split(/\s+/).length <= 24;
+  const systems = []; let cur = null;
+  lines.forEach((l, i) => { if (isTab(l)){ if (!cur){ cur = {rows:[], start:i}; systems.push(cur); } cur.rows.push(l); cur.end = i; } else cur = null; });
+  const warn = []; const out = []; let notes = 0, skipped = 0, lastNote = null, lyrics = 0, timed = false;
+  const six = systems.filter(s => s.rows.length >= 6);
   if (systems.length && !six.length) warn.push('Found tab lines, but not six of them together. Paste whole systems, all six strings.');
-  for (const sys0 of six){
-    for (let k = 0; k + 6 <= sys0.length; k += 6){
-      const sys = sys0.slice(k, k + 6).map(l => { const m = /^\s*[a-gA-G1-6]?[#b]?\s*[|:]?/.exec(l); return l.slice(m ? m[0].length : 0).replace(/\s+$/, ''); });
+  for (const S of six){
+    for (let k = 0; k + 6 <= S.rows.length; k += 6){
+      const raw = S.rows.slice(k, k + 6);
+      const off = (() => { const m = /^\s*[a-gA-G1-6]?[#b]?\s*[|:]?/.exec(raw[0]); return m ? m[0].length : 0; })();
+      const sys = raw.map(l => { const m = /^\s*[a-gA-G1-6]?[#b]?\s*[|:]?/.exec(l); return l.slice(m ? m[0].length : 0).replace(/\s+$/, ''); });
       const W = Math.max(...sys.map(l => l.length));
       const row = sys.map(l => l.padEnd(W, '-'));
       const taken = row.map(() => new Set());
-      const sysOut = [];
+      const items = [];   // {bar:c} or {c, tok, rest:false}
       for (let c = 0; c < W; c++){
-        if (row.every(l => l[c] === '|') || (row.filter(l => l[c] === '|').length >= 4)){ if (sysOut.length && sysOut[sysOut.length - 1] !== '|') sysOut.push('|'); continue; }
+        if (row.filter(l => l[c] === '|').length >= 4){ items.push({bar:c}); continue; }
         const here = [];
         for (let i = 0; i < 6; i++){
           if (taken[i].has(c)) continue;
@@ -1597,15 +1617,13 @@ function tabToRiff(ascii){
           let j = c; while (j < W && /\d/.test(l[j]) && j - c < 2) j++;
           let f = Number(l.slice(c, j)); for (let q = c; q < j; q++) taken[i].add(q);
           if (f > 24){ f = Number(l[c]); j = c + 1; }
-          // what came just before: a legato marker?
           let b = c - 1; while (b >= 0 && /[()\s]/.test(l[b])) b--;
           const pre = l[b];
           const n = {s: i + 1, f, tech: pre === 'h' || pre === 'H' ? 'h' : pre === 'p' || pre === 'P' ? 'p' : pre === '/' || pre === '\\' || pre === 's' || pre === 'S' ? 's' : null};
-          // after: bend, release, vibrato
           let a = j; const mb = /^[(]?[b^][(]?(\d{1,2})[)]?(?:[r][(]?(\d{1,2})[)]?)?/.exec(l.slice(a));
           if (mb){ n.bend = Number(mb[1]); if (mb[2] != null) n.rel = Number(mb[2]); for (let q = a; q < a + mb[0].length; q++) taken[i].add(q); a += mb[0].length; }
-          else if (/^b/.test(l.slice(a))){ n.bend = f + 2; taken[i].add(a); a++; }   // "7b" with no target: a whole step
-          if (l[a] === '~'){ n.vib = true; }
+          else if (/^b/.test(l.slice(a))){ n.bend = f + 2; taken[i].add(a); a++; }
+          if (l[a] === '~') n.vib = true;
           if (n.bend != null && (n.bend <= f || n.bend > f + 3)) delete n.bend, delete n.rel;
           if (n.rel != null && (n.rel >= n.bend || n.rel < f)) delete n.rel;
           here.push(n);
@@ -1613,18 +1631,56 @@ function tabToRiff(ascii){
         if (!here.length) continue;
         const legato = here.length === 1 && here[0].tech && lastNote && lastNote.s === here[0].s && !(here[0].tech === 'h' && here[0].f <= lastNote.f) && !(here[0].tech === 'p' && here[0].f >= lastNote.f) && here[0].f !== lastNote.f;
         const suf = n => (n.bend != null ? 'b' + n.bend + (n.rel != null ? 'r' + n.rel : '') : '') + (n.vib ? '~' : '');
-        if (legato){ const n = here[0]; sysOut.push(n.tech + n.f + (n.vib ? '~' : '')); }
-        else sysOut.push(here.sort((x, y) => y.s - x.s).map(n => n.s + '/' + n.f + suf(n)).join('+'));
+        here.sort((x, y) => y.s - x.s);
+        items.push({c, tok: legato ? here[0].tech + here[0].f + (here[0].vib ? '~' : '') : here.map(n => n.s + '/' + n.f + suf(n)).join('+')});
         lastNote = here[0]; notes += here.length;
       }
-      while (sysOut[0] === '|') sysOut.shift();
-      while (sysOut[sysOut.length - 1] === '|') sysOut.pop();
-      if (sysOut.length){ sysOut[0] = sysOut[0] + ':8'; out.push(sysOut.join(' ')); }
+      const evs = items.filter(x => x.bar == null);
+      if (!evs.length) continue;
+      // rhythm
+      const bars = items.filter(x => x.bar != null).map(x => x.bar);
+      const edges = [0, ...bars, W].filter((v, i, a) => i === 0 || v > a[i - 1]);
+      const segs = []; for (let i = 0; i + 1 < edges.length; i++){ const ev = evs.filter(e => e.c >= edges[i] && e.c < edges[i + 1]); if (ev.length) segs.push({a: edges[i], b: edges[i + 1], ev}); }
+      const gaps = evs.slice(1).map((e, i) => e.c - evs[i].c).filter(g => g > 0);
+      const unit = gaps.length ? Math.min(...gaps) : 2;
+      const toks = [];
+      let curDur = null;
+      const push = (tok, beats) => { const [b, d] = opt.even ? [0.5, '8'] : beatTok(beats); toks.push(d !== curDur ? tok + ':' + d : tok); curDur = d; return b; };
+      const barred = !opt.even && segs.length > 1;
+      segs.forEach((sg, si) => {
+        if (si && toks.length && toks[toks.length - 1] !== '|') toks.push('|');
+        const span = sg.b - sg.a;
+        const pos = c => Math.round((c - sg.a) / span * 4 * 4) / 4;   // where in the bar, to the nearest 16th
+        let tb = 0;   // beats written so far in this bar; each length aims at the next note's spot, so errors don't pile up
+        sg.ev.forEach((e, i) => {
+          const nextC = i + 1 < sg.ev.length ? sg.ev[i + 1].c : sg.b;
+          if (barred && i === 0){ const lead = pos(e.c); if (lead >= 0.75) tb += push('r', lead); }
+          if (barred && i + 1 < sg.ev.length){ const target = Math.max(pos(nextC), tb + 0.25); tb += push(e.tok, target - tb); }
+          else if (barred){   // last note of the bar: the longest length that fits, then a rest for what's left
+            const left = Math.max(0.25, 4 - tb); const fit = BEAT_TOK.find(x => x[0] <= left + 1e-6 && x[1] !== '8t') || BEAT_TOK[BEAT_TOK.length - 1];
+            tb += push(e.tok, fit[0]); if (4 - tb >= 0.25 - 1e-6){ const r = BEAT_TOK.find(x => x[0] <= 4 - tb + 1e-6 && x[1] !== '8t'); if (r) tb += push('r', r[0]); }
+          }
+          else push(e.tok, Math.min(4, (nextC - e.c) / unit * 0.5));
+        });
+      });
+      if (!opt.even) timed = true;
+      let line = toks.join(' ');
+      // lyrics: the nearest word line above or below this system
+      const cand = [S.start + k - 1, S.start + k + 6].filter(i => i >= 0 && i < lines.length && isWords(lines[i]) && !isTab(lines[i]));
+      if (cand.length){
+        const wl = lines[cand[0]]; const words = []; wl.replace(/\S+/g, (w, at) => { words.push({w, c: at - off}); return w; });
+        const slot = evs.map(() => []);
+        words.forEach(w => { let bi = 0, bd = 1e9; evs.forEach((e, i) => { const d = Math.abs(e.c - w.c) + (e.c < w.c ? 0.5 : 0); if (d < bd){ bd = d; bi = i; } }); slot[bi].push(w.w); });
+        const ly = slot.map(s => s.length ? s.join('-') : '_');
+        while (ly.length && ly[ly.length - 1] === '_') ly.pop();
+        if (ly.length){ line += '\n> ' + ly.join(' '); lyrics += words.length; }
+      }
+      out.push(line);
     }
   }
   if (!notes && !warn.length) warn.push('No tab found. Paste the six lines of each system (e|---, B|---, …) exactly as the site shows them.');
   if (skipped) warn.push(`${skipped} muted note${skipped > 1 ? 's' : ''} (x) left out.`);
-  return {text: out.join('\n'), notes, systems: out.length, warn};
+  return {text: out.join('\n'), notes, systems: out.length, lyrics, timed, warn};
 }
 function riffTechs(text){
   const set = new Set();
@@ -1639,11 +1695,12 @@ function tabSvg(events, active, riff, bars){
   const U = 52, MINW = 30, X0 = 40, Y0 = 26, DY = 19;
   let total = 0; events.forEach(e => total = Math.max(total, e.t + e.dur));
   const xs = []; let cx = X0;
-  events.forEach(e => { const wide = Math.max(0, ...e.notes.map(n => noteLabel(n).length)) > 2 ? 14 : 0; xs.push(cx); cx += Math.max(MINW + wide, e.dur * U); });
+  const hasLy = events.some(e => e.lyric);
+  events.forEach(e => { const wide = Math.max(0, ...e.notes.map(n => noteLabel(n).length)) > 2 ? 14 : 0; xs.push(cx); cx += Math.max(MINW + wide, e.dur * U, e.lyric ? e.lyric.length * 7.2 + 10 : 0); });
   const endX = cx;
   const xAt = t => { const i = events.findIndex(e => Math.abs(e.t - t) < 1e-6); return i >= 0 ? xs[i] : endX; };
   const W = Math.max(320, endX + 18);
-  const H = Y0 + 5 * DY + 34;
+  const H = Y0 + 5 * DY + 34 + (hasLy ? 22 : 0);
   const names = ['e','B','G','D','A','E'];
   let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Tab for ${esc(riff ? riff.title : 'riff')}">`;
   names.forEach((n, i) => { s += `<text class="lab" x="10" y="${Y0 + i * DY + 4}">${n}</text><line class="sl" x1="${X0 - 8}" y1="${Y0 + i * DY}" x2="${W - 10}" y2="${Y0 + i * DY}"/>`; });
@@ -1666,7 +1723,9 @@ function tabSvg(events, active, riff, bars){
       }
       s += `<rect class="frbg" x="${x - w / 2}" y="${y - 9}" width="${w}" height="18" rx="4"/><text class="fr" x="${x}" y="${y + 4.5}" text-anchor="middle">${esc(lab)}</text>`;
     });
-    s += `<rect class="dur" x="${x - 6}" y="${Y0 + 5 * DY + 16}" width="${Math.max(4, span - 8)}" height="5" rx="2.5" opacity="${e.rest ? .35 : 1}"/></g>`;
+    s += `<rect class="dur" x="${x - 6}" y="${Y0 + 5 * DY + 16}" width="${Math.max(4, span - 8)}" height="5" rx="2.5" opacity="${e.rest ? .35 : 1}"/>`;
+    if (e.lyric) s += `<text class="lyr" x="${x - 6}" y="${Y0 + 5 * DY + 40}">${esc(e.lyric)}</text>`;
+    s += '</g>';
   });
   s += '</svg>';
   return s;
@@ -2420,16 +2479,17 @@ function drillVisible(id){ const t = RIFFS[id].drill; return t && mvOpen(TECHS[t
 function riffIds(){ return [...Object.keys(RIFFS).filter(k => !RIFFS[k].drill || drillVisible(k) || k === lp.riffId), ...customIds()]; }
 function customIds(){ return Object.keys(store.data.riffs.map).filter(k => !RIFFS[k] && store.data.riffs.map[k] && store.data.riffs.map[k].custom); }
 function pastePreview(){
-  const r = tabToRiff(lp.paste ? lp.paste.text : '');
+  const r = tabToRiff(lp.paste ? lp.paste.text : '', {even: !!(lp.paste && lp.paste.even)});
   if (!r.notes) return `<span class="note">${esc(r.warn[0] || '')}</span>`;
   const p = parseRiff(r.text);
-  return `<div class="note">${r.notes} notes in ${r.systems} line${r.systems > 1 ? 's' : ''}${riffTechs(r.text).length ? ' · uses ' + riffTechs(r.text).map(t => TECHS[t].name.toLowerCase()).join(', ') : ''}${r.warn.length ? ' · ' + r.warn.map(esc).join(' ') : ''}</div><div class="tabwrap">${tabSvg(p.events, -1, {ts:4}, p.bars)}</div>`;
+  return `<div class="note">${r.notes} notes in ${r.systems} line${r.systems > 1 ? 's' : ''}${r.lyrics ? ` · ${r.lyrics} words of lyrics` : ''}${r.timed ? ' · rhythm from the spacing' : ' · even notes'}${riffTechs(r.text).length ? ' · uses ' + riffTechs(r.text).map(t => TECHS[t].name.toLowerCase()).join(', ') : ''}${r.warn.length ? ' · ' + r.warn.map(esc).join(' ') : ''}</div><div class="tabwrap">${tabSvg(p.events, -1, {ts:4}, p.bars)}</div>`;
 }
 function pasteCard(){
   const P = lp.paste;
   return `<section class="card editor paste" aria-label="Paste a tab">
     <div class="sec-h"><h3>Paste a tab</h3><div class="row"><button class="btn sm ghost" data-act="pastecancel" type="button">Cancel</button><button class="btn sm" data-act="pasteadd" type="button">Save only</button><button class="btn sm primary" data-act="pasteadd" data-play="1" type="button">Save and play</button></div></div>
-    <p class="note">Copy any tab (from a site, your notes, anywhere; all six lines of each system, e|--- down to E|---) and paste it here. The app plays it back and lights up each note. Hammer-ons, pull-offs, slides, bends and vibrato come across. Tab spacing isn’t rhythm, so the riff opens in <b>Follow mode</b>: play along with the record and it moves on when it hears the right note.</p>
+    <p class="note">Copy any tab (from a site, your notes, anywhere; all six lines of each system, e|--- down to E|---) and paste it here. The app plays it back and lights up each note. Hammer-ons, pull-offs, slides, bends and vibrato come across. The rhythm is read from how far apart the notes sit in each bar, so it’s close but not exact: check it against the record and fix lengths in the notes editor. A line of words right above or below the tab comes in as lyrics.</p>
+    <label class="row" style="font-size:14px"><input type="checkbox" data-act="pasteeven" ${P.even ? 'checked' : ''}> Ignore the spacing (every note the same length)</label>
     <div class="field"><label for="pasteTitle">Title</label><input type="text" id="pasteTitle" data-act="pastetitle" value="${esc(P.title)}" placeholder="Song and part, e.g. Layla riff"></div>
     <textarea id="pasteText" class="pastebox" data-act="pastetext" spellcheck="false" aria-label="Tab" placeholder="e|-----------------|&#10;B|-----------5h8---|&#10;G|-------5-7-------|&#10;D|---5-7-----------|&#10;A|-7---------------|&#10;E|-----------------|">${esc(P.text)}</textarea>
     <div id="pastePrev">${pastePreview()}</div>
@@ -2468,7 +2528,7 @@ function viewLead(){
   const side = l ? `<div class="row">${leadLinks(l)}<button class="btn" data-act="open-lead" data-id="${l.id}" type="button">Mark progress</button></div>`
     : isDrill ? `<div class="row">${techLearned(r.drill) ? `<span class="pill done">Learned</span><button class="btn sm ghost" data-act="tech" data-t="${r.drill}" data-v="0" type="button">Not yet</button>` : `<button class="btn lead" data-act="tech" data-t="${r.drill}" data-v="1" type="button">I can play this cleanly</button>`}</div>` : '';
   const kind = l ? leadKind(l) : null;
-  const intro = isDrill ? esc(TECHS[r.drill].how) : kind === 'etude' || kind === 'tune' ? `${esc(l.tip)} <span class="srcline">${kind === 'tune' ? esc(l.src) + ' · ' + esc(l.key) : 'Fretline étude · ' + esc(l.key)}${l.goalBpm ? ` · start at ${r.bpm}, goal ${l.goalBpm} bpm` : r.free ? ' · your own pace, in Follow mode' : ''}</span>` : r.pasted ? 'Pasted from a tab. The notes and techniques come across; the rhythm doesn’t, so use <b>Follow mode</b> with the record, or add lengths (<code>:4</code>, <code>:8</code>) in the notes below.' : r.free ? `Notes from ${esc(r.src || 'the tab')}. The source has no rhythm, so playback uses even notes. Use <b>Follow mode</b>: play along with the song, and the app moves to the next note when the mic hears the right pitch.` : `Type the notes, and the app plays them back while the tab lights up. ${r.approx ? 'The notes come from the linked tab; the rhythm is my best reading, so check it against the record and fix it here.' : `Notes from ${esc(r.src || 'the tab')}.`}`;
+  const intro = isDrill ? esc(TECHS[r.drill].how) : kind === 'etude' || kind === 'tune' ? `${esc(l.tip)} <span class="srcline">${kind === 'tune' ? esc(l.src) + ' · ' + esc(l.key) : 'Fretline étude · ' + esc(l.key)}${l.goalBpm ? ` · start at ${r.bpm}, goal ${l.goalBpm} bpm` : r.free ? ' · your own pace, in Follow mode' : ''}</span>` : r.pasted ? (r.free ? 'Pasted from a tab, with every note the same length. Use <b>Follow mode</b> with the record, or add lengths (<code>:4</code>, <code>:8</code>) in the notes below.' : 'Pasted from a tab. The rhythm comes from the tab’s spacing, so check it against the record; change any length in the notes below. Lyrics go on a line starting with <code>&gt;</code>.') : r.free ? `Notes from ${esc(r.src || 'the tab')}. The source has no rhythm, so playback uses even notes. Use <b>Follow mode</b>: play along with the song, and the app moves to the next note when the mic hears the right pitch.` : `Type the notes, and the app plays them back while the tab lights up. ${r.approx ? 'The notes come from the linked tab; the rhythm is my best reading, so check it against the record and fix it here.' : `Notes from ${esc(r.src || 'the tab')}.`}`;
   return `
   ${head(isDrill ? 'Lead player · technique drill' : 'Lead player', esc(r.title), intro, side)}
   <div class="leadgrid">
@@ -2510,7 +2570,7 @@ function viewLead(){
           <span><code>4/5+3/5</code> two notes together</span><span>Lengths carry over until changed</span>
           <span><code>h7</code> hammer-on to fret 7</span><span><code>p5</code> pull-off to fret 5</span>
           <span><code>s9</code> slide to fret 9</span><span><code>3/7b9</code> bend fret 7 up to 9's pitch</span><span><code>3/7b9r7</code> bend, then release</span>
-          <span><code>3/7~</code> vibrato</span><span>h, p and s stay on the previous note's string</span>
+          <span><code>3/7~</code> vibrato</span><span><code>&gt; Har pal ya</code> lyrics, one word per note of the line above (<code>_</code> skips one)</span><span>h, p and s stay on the previous note's string</span>
         </div>
       </section>
     </div>
@@ -4643,11 +4703,11 @@ document.addEventListener('click', e => {
     case 'pastecancel': lp.paste = null; render(); break;
     case 'pasteadd': {
       const P = lp.paste; if (!P) break;
-      const r = tabToRiff(P.text); if (!r.notes){ toast(r.warn[0] || 'No tab found.'); break; }
+      const r = tabToRiff(P.text, {even: !!P.even}); if (!r.notes){ toast(r.warn[0] || 'No tab found.'); break; }
       const id = 'my-' + Date.now().toString(36);
-      store.data.riffs.map[id] = {title: (P.title || '').trim() || 'Pasted tab', text: r.text, bpm: 70, ts: 4, free: true, custom: true, pasted: true};
+      store.data.riffs.map[id] = {title: (P.title || '').trim() || 'Pasted tab', text: r.text, bpm: 70, ts: 4, free: !r.timed, approx: r.timed, custom: true, pasted: true};
       touch('riffs'); lp.paste = null; lp.riffId = id; lp.text = null; lp.bpm = null; lp.dirty = false;
-      toast(`Added to Your riffs: ${r.notes} notes.`); render(); if (el.dataset.play) lpStart(true); break;
+      toast(`Added to Your riffs: ${r.notes} notes${r.lyrics ? ', with lyrics' : ''}.`); render(); if (el.dataset.play) lpStart(true); break;
     }
     case 'newriff': {
       lpStop(); const id = 'my-' + Date.now().toString(36);
@@ -4671,6 +4731,8 @@ document.addEventListener('change', e => {
     case 'libsel': ui.lib[el.dataset.k] = el.value; render(); break;
     case 'libplay': ui.lib.playable = el.checked; render(); break;
     case 'lpopt': lp[el.dataset.k] = el.checked; break;
+    case 'pasteeven': if (lp.paste){ lp.paste.even = el.checked; const b = $('#pastePrev'); if (b) b.innerHTML = pastePreview(); } break;
+
     case 'riffsel': lpStop(); flStop(true); lp.key = null; lp.riffId = el.value; lp.text = null; lp.bpm = null; lp.dirty = false; render(); break;
     case 'cf': ui.cf[el.dataset.k] = el.value; break;
     case 'known': { const k = settings().known.filter(c => c !== el.dataset.v); if (el.checked) k.push(el.dataset.v); saveSettings({known: CHORD_LIST.filter(c => k.includes(c))}); render(); break; }
