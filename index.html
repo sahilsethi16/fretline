@@ -482,6 +482,11 @@ ul.mvsongs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .factrow{display:flex;flex-wrap:wrap;gap:8px 22px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
 .factrow span{display:grid;gap:2px;font-size:14px}
 .factrow b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.lyrev{margin-top:10px;font-size:14px}
+.lyrev summary{cursor:pointer;font-weight:600}
+.lyrev ol{margin:8px 0;padding-left:20px;display:grid;gap:4px}
+.lyrev li span{display:block;color:var(--muted);font-size:13px}
+.lyrev li.warn span{color:var(--bad)}
 
 /* ---------- progress ---------- */
 .tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
@@ -1536,7 +1541,7 @@ function parseRiff(text){
   const tr = ln.trim();
   if (tr.startsWith('>')){
     const evs = events.slice(lineStart).filter(e => !e.rest);
-    tr.slice(1).trim().split(/\s+/).filter(Boolean).forEach((w, i) => { if (evs[i] && w !== '_') evs[i].lyric = w.replace(/_/g, ' '); });
+    tr.slice(1).trim().split(/\s+/).filter(Boolean).forEach((w, i) => { if (evs[i] && w !== '_') evs[i].lyric = w === '~' ? '–' : w.replace(/_/g, ' '); });
     continue;
   }
   lineStart = events.length;
@@ -1730,12 +1735,52 @@ function fingerLine(midis, state){
     state.s = best.s; return best;
   });
 }
+/* Lyrics → notes. Sung Hindi and English put one syllable on each note, so words are split into syllables
+   (ni-kal, ja-haan, aas-maan). Extra notes go to held syllables: the last one of the line first, then long vowels
+   (aa, ee, oo, ai, au); they show as – under the note. Extra syllables pair up on the shortest notes. */
+function syllables(word){
+  const w = word.toLowerCase().replace(/[^a-z'ऀ-ॿ-]/g, '');
+  if (!w || /[ऀ-ॿ]/.test(w)) return [word];
+  const V = /[aeiou]/, parts = [];
+  // units: consonants with an h after them (dh, bh, chh, sh…) stay together
+  const units = w.replace(/-/g, '').match(/[aeiou]+|chh|[bcdfgjkpstr]h|[^aeiou]/g) || [w];
+  let cur = '';
+  for (let i = 0; i < units.length; i++){
+    const u = units[i]; cur += u;
+    if (V.test(u)){
+      let j = i + 1; const cons = []; while (j < units.length && !V.test(units[j])) cons.push(units[j++]);
+      if (j >= units.length){ cur += cons.join(''); parts.push(cur); cur = ''; break; }
+      if (cons.length >= 2){ cur += cons[0]; i += 1; }   // lam-haa, aas-maan: first consonant stays
+      parts.push(cur); cur = '';
+    }
+  }
+  if (cur) { if (parts.length) parts[parts.length - 1] += cur; else parts.push(cur); }
+  // put the original capitalisation back
+  let at = 0; return parts.map(p => { const o = word.replace(/[^A-Za-z'ऀ-ॿ]/g, '').slice(at, at + p.length); at += p.length; return o || p; });
+}
+function fitLyrics(text, n){
+  const words = text.split(/\s+/).filter(Boolean);
+  const syl = []; words.forEach(w => { const ss = syllables(w); ss.forEach((x, i) => syl.push({t: x + (i < ss.length - 1 ? '-' : ''), long: /aa|ee|oo|ai|au|ii|uu/i.test(x)})); });
+  const slots = syl.map(x => ({t: x.t, n: 1, long: x.long}));
+  let msg = '', ok = true;
+  if (slots.length < n){
+    let extra = n - slots.length; const held = [];
+    const order = [slots.length - 1, ...slots.map((x, i) => i).filter(i => slots[i].long && i !== slots.length - 1).reverse()];
+    let k = 0; while (extra > 0 && order.length){ const i = order[k % order.length]; slots[i].n++; extra--; k++; if (!held.includes(slots[i].t)) held.push(slots[i].t.replace(/-$/, '')); }
+    msg = `${syl.length} syllables on ${n} notes: ${held.map(h => '“' + h + '”').join(', ')} held over the extra note${n - syl.length > 1 ? 's' : ''}`;
+  } else if (slots.length > n){
+    while (slots.length > n){ let bi = 0, bl = 1e9; for (let i = 0; i + 1 < slots.length; i++){ const l = slots[i].t.length + slots[i + 1].t.length + (slots[i].long || slots[i + 1].long ? 4 : 0); if (l < bl){ bl = l; bi = i; } } slots[bi].t = slots[bi].t.replace(/-$/, '') + (slots[bi].t.endsWith('-') ? '' : '_') + slots[bi + 1].t; slots.splice(bi + 1, 1); }
+    msg = `${syl.length} syllables on ${n} notes: some notes carry two syllables, so check those by ear`; ok = false;
+  } else msg = `${n} syllables on ${n} notes: one each`;
+  const tokens = []; slots.forEach(x => { tokens.push(x.t); for (let i = 1; i < x.n; i++) tokens.push('~'); });
+  return {tokens, syl: syl.length, words: words.length, msg, ok};
+}
 function notesToRiff(text, opt){
   opt = opt || {};
   const sa = opt.sa != null ? opt.sa : 0;
   const saMidi = sa <= 4 ? 60 + sa : 48 + sa;
   const lines = String(text || '').split(/\r?\n/);
-  const out = []; let notes = 0, lyrics = 0, kind = null, pending = null, outOfRange = 0;
+  const out = [], review = []; let notes = 0, lyrics = 0, kind = null, pending = null, outOfRange = 0;
   const state = {pos: sa <= 4 ? 4 : 2, s: 3};
   for (const raw of lines){
     const l = raw.trim(); if (!l) continue;
@@ -1754,15 +1799,15 @@ function notesToRiff(text, opt){
     toks[0] = toks[0].includes(':') ? toks[0] : toks[0] + ':' + cur;
     let line = toks.join(' ');
     if (pending){
-      const words = pending.split(/\s+/).filter(Boolean), m = toks.length, slot = Array(m).fill(null);
-      words.forEach((w, i) => { const j = Math.min(m - 1, Math.floor(i * m / words.length)); slot[j] = slot[j] ? slot[j] + '-' + w : w; });
-      line += '\n> ' + slot.map(x => x || '_').join(' ').replace(/( _)+$/, ''); lyrics += words.length;
+      const fit = fitLyrics(pending, toks.length);
+      line += '\n> ' + fit.tokens.join(' ').replace(/( _)+$/, ''); lyrics += fit.words;
+      review.push({words: pending, syl: fit.syl, notes: toks.length, msg: fit.msg, ok: fit.ok});
     }
     pending = null; out.push(line);
   }
   const warn = [];
   if (outOfRange) warn.push(`${outOfRange} note${outOfRange > 1 ? 's' : ''} out of the guitar's range left out.`);
-  return {text: out.join('\n'), notes, systems: out.length, lyrics, timed: false, kind, warn};
+  return {text: out.join('\n'), notes, systems: out.length, lyrics, timed: false, kind, warn, review};
 }
 // Paste box: tab first, then sargam / note names
 function importNotes(text, opt){
@@ -2570,7 +2615,7 @@ function pastePreview(){
   const r = importNotes(lp.paste ? lp.paste.text : '', {even: !!(lp.paste && lp.paste.even), sa: (lp.paste && lp.paste.sa) || 0});
   if (!r.notes) return `<span class="note">${esc(r.warn[0] || '')}</span>`;
   const p = parseRiff(r.text);
-  return `<div class="note">${r.notes} notes in ${r.systems} line${r.systems > 1 ? 's' : ''}${r.lyrics ? ` · ${r.lyrics} words of lyrics` : ''}${r.kind === 'sargam' ? ' · read as sargam, Sa = ' + SHARP[(lp.paste.sa || 0)] : r.kind === 'names' ? ' · read as note names' : r.timed ? ' · rhythm from the spacing' : ' · even notes'}${riffTechs(r.text).length ? ' · uses ' + riffTechs(r.text).map(t => TECHS[t].name.toLowerCase()).join(', ') : ''}${r.warn.length ? ' · ' + r.warn.map(esc).join(' ') : ''}</div><div class="tabwrap">${tabSvg(p.events, -1, {ts:4}, p.bars)}</div>`;
+  return `<div class="note">${r.notes} notes in ${r.systems} line${r.systems > 1 ? 's' : ''}${r.lyrics ? ` · ${r.lyrics} words of lyrics` : ''}${r.kind === 'sargam' ? ' · read as sargam, Sa = ' + SHARP[(lp.paste.sa || 0)] : r.kind === 'names' ? ' · read as note names' : r.timed ? ' · rhythm from the spacing' : ' · even notes'}${riffTechs(r.text).length ? ' · uses ' + riffTechs(r.text).map(t => TECHS[t].name.toLowerCase()).join(', ') : ''}${r.warn.length ? ' · ' + r.warn.map(esc).join(' ') : ''}</div><div class="tabwrap">${tabSvg(p.events, -1, {ts:4}, p.bars)}</div>${r.review && r.review.length ? `<details class="lyrev" ${r.review.some(x => !x.ok) ? 'open' : ''}><summary>Lyrics check: ${r.review.filter(x => x.ok).length} of ${r.review.length} lines fit${r.review.some(x => !x.ok) ? ', ' + r.review.filter(x => !x.ok).length + ' to check' : ''}</summary><ol>${r.review.map(x => `<li class="${x.ok ? '' : 'warn'}"><b>${esc(x.words)}</b><span>${esc(x.msg)}</span></li>`).join('')}</ol><p class="note">Each syllable gets a note; <code>–</code> under a note means the syllable before it is held. To move a word, edit its <code>&gt;</code> line in the notes after saving.</p></details>` : ''}`;
 }
 function pasteCard(){
   const P = lp.paste;
