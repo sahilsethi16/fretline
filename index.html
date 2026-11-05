@@ -453,6 +453,8 @@ ul.mvsongs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .rifflist button b{font:600 14.5px var(--f-body)}
 .rifflist button span{font-size:12px;color:var(--muted)}
 .rifflist .grp{font:600 12px var(--f-body);color:var(--faint);padding:10px 10px 4px}
+.rifflist .grp.sub{padding-top:6px;font-weight:500;font-size:11.5px;letter-spacing:.04em}
+.rifflist .songlink b::after{content:" \2197";color:var(--faint);font-weight:400}
 .tabwrap{overflow-x:auto;background:var(--surface-2);border-radius:14px;padding:12px 6px;border:1px solid var(--line)}
 .tabwrap svg{display:block}
 .tabwrap .sl{stroke:var(--string);stroke-width:1;opacity:.7}
@@ -2446,7 +2448,16 @@ function viewLead(){
   const customs = customIds();
   const item = (id, sub) => { const d = riffData(id); return `<button type="button" role="listitem" data-act="pickriff" data-id="${id}" aria-current="${id === lp.riffId}"><b>${esc(d.title)}</b><span>${sub}</span></button>`; };
   const list = `<div class="rifflist" role="list">
-    ${pathRiffs.map((id, i) => { const lg = leadFor(id), pm = i ? leadMv(leadFor(pathRiffs[i - 1])) : 0, mvn = leadMv(lg); const hd = mvn !== pm ? `<div class="grp">Side B · Movement ${MOVEMENTS[mvn - 1].num}${mvOpen(mvn) ? '' : ' · later'}</div>` : ''; return hd + (() => { const d = riffData(id); const l = leadFor(id); const stt = l ? songState(l.id).status : 'new'; return item(id, `${l ? leadTrackNo(l.id) + ' · ' : ''}${d.free ? 'follow mode' : d.bpm + ' bpm'}${l && l.check === 'unchecked' ? ' · notes unchecked' : l && (l.check === 'ok' || l.check === 'fixed') ? ' · notes checked' : ''}${l && l.goalBpm > d.bpm ? ' → ' + l.goalBpm : ''}${stt === 'done' ? ' · done' : stt !== 'new' ? ' · ' + esc(STATUS_LABEL[stt]) : ''}${d.edited ? ' · edited' : ''}`); })(); }).join('')}
+    ${(() => { let pm = 0, ps = null; return leadOrderAll().map(l => {
+      const mvn = leadMv(l), song = !l.riff, stt = songState(l.id).status;
+      let hd = mvn !== pm ? `<div class="grp">Side B · Movement ${MOVEMENTS[mvn - 1].num}${mvOpen(mvn) ? '' : ' · later'}</div>` : '';
+      if (song && (mvn !== pm || !ps)) hd += `<div class="grp sub">Songs · tab on the web</div>`;
+      pm = mvn; ps = song;
+      const st = stt === 'done' ? ' · done' : stt !== 'new' ? ' · ' + esc(STATUS_LABEL[stt]) : '';
+      if (song) return hd + `<button type="button" role="listitem" class="songlink" data-act="open-lead" data-id="${l.id}"><b>${esc(l.title)}</b><span>${leadTrackNo(l.id)} · ${esc(l.artist.split(' (')[0])}${st}</span></button>`;
+      const d = riffData(l.riff);
+      return hd + item(l.riff, `${leadTrackNo(l.id)} · ${d.free ? 'follow mode' : d.bpm + ' bpm'}${l.goalBpm > d.bpm ? ' → ' + l.goalBpm : ''}${st}${d.edited ? ' · edited' : ''}`);
+    }).join(''); })()}
     ${drills.length ? `<div class="grp">Technique drills</div>${drills.map(id => item(id, `${RIFFS[id].bpm} bpm${techLearned(RIFFS[id].drill) ? ' · learned' : ''}`)).join('')}` : ''}
     ${customs.length ? `<div class="grp">Your riffs</div>${customs.map(id => item(id, riffData(id).free ? 'follow mode' : riffData(id).bpm + ' bpm')).join('')}` : ''}
     <div class="row" style="padding:8px 6px"><button class="btn sm" data-act="pastetab" type="button">Paste a tab</button><button class="btn sm ghost" data-act="newriff" type="button">New riff</button></div>
