@@ -457,6 +457,11 @@ ul.mvsongs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .rifflist .songlink b::after{content:" \2197";color:var(--faint);font-weight:400}
 .tabwrap{overflow-x:auto;background:var(--surface-2);border-radius:14px;padding:12px 6px;border:1px solid var(--line)}
 .tabwrap svg{display:block}
+.tabwrap.tabscroll{overflow-x:hidden;overflow-y:auto;max-height:min(62vh,560px);scroll-behavior:smooth;padding:8px 6px}
+.tabrows{display:grid;gap:4px}
+.trow{overflow-x:auto;border-radius:10px;padding:2px 0;transition:opacity .25s,background-color .25s}
+.tabscroll.playing .trow{opacity:.42}
+.tabscroll.playing .trow.cur{opacity:1;background:color-mix(in oklab,var(--lead) 9%,transparent)}
 .tabwrap .sl{stroke:var(--string);stroke-width:1;opacity:.7}
 .tabwrap .bl{stroke:var(--muted);stroke-width:1.4}
 .tabwrap .lab{fill:var(--muted);font:600 11px var(--f-mono)}
@@ -1536,7 +1541,7 @@ function parseRiff(text){
   let t = 0, dur = 1;
   let last = null; // last sounded note, for h/p/s
   // a line starting with > holds lyrics: one word per note of the line above (_ skips a note)
-  let lineStart = 0;
+  let lineStart = 0, lineNo = -1;
   for (const ln of String(text || '').split(/\r?\n/)){
   const tr = ln.trim();
   if (tr.startsWith('>')){
@@ -1544,7 +1549,7 @@ function parseRiff(text){
     tr.slice(1).trim().split(/\s+/).filter(Boolean).forEach((w, i) => { if (evs[i] && w !== '_') evs[i].lyric = w === '~' ? '–' : w.replace(/_/g, ' '); });
     continue;
   }
-  lineStart = events.length;
+  lineStart = events.length; if (ln.trim()) lineNo++;
   const toks = ln.replace(/\|/g, ' | ').split(/\s+/).filter(Boolean);
   for (const raw of toks){
     if (raw === '|'){ if (!bars.length || bars[bars.length-1] !== t) bars.push(t); continue; }
@@ -1557,7 +1562,7 @@ function parseRiff(text){
       if (!base){ errors.push(`"${raw}": the length after ":" must be 1, 2, 4, 8, 16 or 32 (add . for dotted, or t for a triplet: 8t).`); continue; }
       dur = dotted ? base * 1.5 : base;
     }
-    if (body === 'r' || body === 'R'){ events.push({t, dur, rest:true, notes:[]}); t += dur; last = null; continue; }
+    if (body === 'r' || body === 'R'){ events.push({t, dur, rest:true, notes:[], line:lineNo}); t += dur; last = null; continue; }
     const lg = /^([hps])(\d{1,2})(~)?$/.exec(body);
     if (lg){
       if (!last){ errors.push(`"${raw}": ${lg[1] === 'h' ? 'a hammer-on' : lg[1] === 'p' ? 'a pull-off' : 'a slide'} needs a note right before it.`); continue; }
@@ -1566,7 +1571,7 @@ function parseRiff(text){
         errors.push(`"${raw}": ${lg[1] === 'h' ? 'hammer-ons go up the neck' : lg[1] === 'p' ? 'pull-offs go down the neck' : 'a slide has to move to a different fret'} (from fret ${last.f}).`); continue;
       }
       const n = {s:last.s, f, tech:lg[1], from:last.f, vib:!!lg[3]};
-      events.push({t, dur, rest:false, notes:[n]}); t += dur; last = n; continue;
+      events.push({t, dur, rest:false, notes:[n], line:lineNo}); t += dur; last = n; continue;
     }
     const parts = body.split('+'); const notes = []; let bad = null;
     for (const p of parts){
@@ -1580,9 +1585,10 @@ function parseRiff(text){
       notes.push(n);
     }
     if (bad){ errors.push(bad); continue; }
-    events.push({t, dur, rest:false, notes}); t += dur; last = notes[0];
+    events.push({t, dur, rest:false, notes, line:lineNo}); t += dur; last = notes[0];
   }
   }
+  events.forEach(e => { if (e.line == null) e.line = 0; });
   return {events, bars, errors, total:t};
 }
 /* ASCII tab (the kind on tab sites) → riff notation.
@@ -1824,9 +1830,11 @@ function riffTechs(text){
   return [...set];
 }
 function noteLabel(n){ return String(n.f) + (n.bend != null ? 'b' + n.bend : '') + (n.rel != null ? 'r' + n.rel : '') + (n.vib ? '~' : ''); }
-function tabSvg(events, active, riff, bars){
+function tabSvg(events, active, riff, bars, o){
+  o = o || {base:0, bar1:1, first:true, t0:0, t1:Infinity};
   const U = 52, MINW = 30, X0 = 40, Y0 = 26, DY = 19;
   let total = 0; events.forEach(e => total = Math.max(total, e.t + e.dur));
+  const tStart = events.length ? events[0].t : 0;
   const xs = []; let cx = X0;
   const hasLy = events.some(e => e.lyric);
   events.forEach(e => { const wide = Math.max(0, ...e.notes.map(n => noteLabel(n).length)) > 2 ? 14 : 0; xs.push(cx); cx += Math.max(MINW + wide, e.dur * U, e.lyric ? e.lyric.length * 7.2 + 10 : 0); });
@@ -1839,18 +1847,18 @@ function tabSvg(events, active, riff, bars){
   names.forEach((n, i) => { s += `<text class="lab" x="10" y="${Y0 + i * DY + 4}">${n}</text><line class="sl" x1="${X0 - 8}" y1="${Y0 + i * DY}" x2="${W - 10}" y2="${Y0 + i * DY}"/>`; });
   s += `<line class="bl" x1="${X0 - 8}" y1="${Y0}" x2="${X0 - 8}" y2="${Y0 + 5 * DY}"/>`;
   const bl = bars || parseRiff(riff ? riff.text : '').bars;
-  let barNo = 1;
-  s += `<text class="barn" x="${X0 - 6}" y="${Y0 - 12}">1</text>`;
-  (bl || []).forEach(bt => { if (bt <= 0 || bt >= total) return; const x = xAt(bt) - MINW / 2 + 2; barNo++; s += `<line class="bl" x1="${x}" y1="${Y0}" x2="${x}" y2="${Y0 + 5 * DY}"/><text class="barn" x="${x + 3}" y="${Y0 - 12}">${barNo}</text>`; });
+  let barNo = o.bar1;
+  s += `<text class="barn" x="${X0 - 6}" y="${Y0 - 12}">${o.bar1}</text>`;
+  (bl || []).forEach(bt => { if (bt <= tStart + 1e-6 || bt >= total - 1e-6) return; const x = xAt(bt) - MINW / 2 + 2; barNo++; s += `<line class="bl" x1="${x}" y1="${Y0}" x2="${x}" y2="${Y0 + 5 * DY}"/><text class="barn" x="${x + 3}" y="${Y0 - 12}">${barNo}</text>`; });
   s += `<line class="bl" x1="${W - 10}" y1="${Y0}" x2="${W - 10}" y2="${Y0 + 5 * DY}"/>`;
   events.forEach((e, i) => {
     const x = xs[i] + 6; const span = (i + 1 < xs.length ? xs[i + 1] : endX) - xs[i];
-    s += `<g class="col${i === active ? ' on' : ''}" data-ev="${i}">`;
+    s += `<g class="col${i + o.base === active ? ' on' : ''}" data-ev="${i + o.base}">`;
     if (e.rest) s += `<text class="rest" x="${x}" y="${Y0 + 2.5 * DY + 4}" text-anchor="middle">r</text>`;
     e.notes.forEach(n => {
       const y = Y0 + (n.s - 1) * DY; const lab = noteLabel(n); const w = 7 + lab.length * 7.6;
       if (n.tech && i > 0){
-        const px = xs[i - 1] + 6, mx = (px + x) / 2;
+        const px = xs[i - 1] + 6, mx = (px + x) / 2;   // (a legato note at the start of a row draws its mark from the row's edge)
         if (n.tech === 's'){ const up = n.f > n.from; s += `<line class="tq-ln" x1="${mx - 6}" y1="${y + (up ? 5 : -5)}" x2="${mx + 6}" y2="${y + (up ? -5 : 5)}"/>`; }
         else s += `<path class="tq-arc" d="M${px + 4} ${y - 10} Q${mx} ${y - 19} ${x - 4} ${y - 10}"/><text class="tq" x="${mx}" y="${y - 17}" text-anchor="middle">${n.tech}</text>`;
       }
@@ -1863,6 +1871,51 @@ function tabSvg(events, active, riff, bars){
   s += '</svg>';
   return s;
 }
+
+/* The tab as lines, like a printed tab: a new line for each line of the riff text, and long lines wrapped at bar lines.
+   Each line is its own svg; data-ev keeps the event's index in the whole riff, so playback and Follow mode find it. */
+const TAB_ROW_W = 640;
+function tabEvW(e){ const wide = Math.max(0, ...e.notes.map(n => noteLabel(n).length)) > 2 ? 14 : 0; return Math.max(30 + wide, e.dur * 52, e.lyric ? e.lyric.length * 7.2 + 10 : 0); }
+function tabRows(events, active, riff, bars){
+  bars = bars || [];
+  if (!events.length) return tabSvg(events, active, riff, bars);
+  const groups = []; let g = null;
+  events.forEach((e, i) => { if (!g || e.line !== g.line){ g = {line: e.line, idx: []}; groups.push(g); } g.idx.push(i); });
+  const rows = [];
+  for (const gr of groups){
+    let cur = [], w = 0, lastBarCut = -1;
+    gr.idx.forEach(i => {
+      const e = events[i], ew = tabEvW(e);
+      const atBar = bars.some(b => Math.abs(b - e.t) < 1e-6);
+      if (atBar && cur.length) lastBarCut = cur.length;
+      if (w + ew > TAB_ROW_W && cur.length){
+        const cut = lastBarCut > 0 ? lastBarCut : cur.length;
+        rows.push(cur.slice(0, cut)); cur = cur.slice(cut); w = cur.reduce((a, j) => a + tabEvW(events[j]), 0); lastBarCut = -1;
+      }
+      cur.push(i); w += ew;
+    });
+    if (cur.length) rows.push(cur);
+  }
+  let barNo = 1;
+  return `<div class="tabrows">${rows.map((r, k) => {
+    const evs = r.map(i => events[i]); const t0 = evs[0].t;
+    const bar1 = 1 + bars.filter(b => b <= t0 + 1e-6 && b > 0).length;
+    const has = r.includes(active);
+    return `<div class="trow${has ? ' cur' : ''}" data-row="${k}">${tabSvg(evs, active, riff, bars, {base: r[0], bar1, first: k === 0})}</div>`;
+  }).join('')}</div>`;
+}
+// keep the row being played in view, in the middle of the tab box, and dim the others
+function tabFocus(box, g){
+  if (!box || !g) return;
+  const row = g.closest('.trow'); if (!row) return;
+  if (!row.classList.contains('cur')){ box.querySelectorAll('.trow.cur').forEach(x => x.classList.remove('cur')); row.classList.add('cur'); }
+  box.classList.add('playing');
+  const top = row.offsetTop - box.offsetTop - (box.clientHeight - row.offsetHeight) / 2;
+  if (Math.abs(box.scrollTop - top) > 8 && box.scrollHeight > box.clientHeight) box.scrollTo({top: Math.max(0, top), behavior: 'smooth'});
+  const x = g.getBBox ? g.getBBox().x : 0;
+  if (x < row.scrollLeft + 40 || x > row.scrollLeft + row.clientWidth - 80) row.scrollLeft = Math.max(0, x - 60);
+}
+function tabUnfocus(box){ if (box){ box.classList.remove('playing'); } }
 
 /* chord diagram (frets low E → high e; supports a barre) */
 function chordSvg(name, size){
@@ -2592,7 +2645,7 @@ function leadDrawer(id){
       ${leadLinks(l)}
       ${kind === 'song' ? `<a class="btn" href="${ytq(l.artist.split(' / ')[0] + ' ' + l.title)}" target="_blank" rel="noopener">Find the track</a><button class="btn ghost" data-act="pastetab" data-title="${esc(l.title)}" type="button">Paste its tab</button>` : ''}
     </div>
-    ${riff ? `<div class="tabwrap">${tabSvg(parseRiff(riff.text).events, -1, riff)}</div>` : ''}
+    ${riff ? `<div class="tabwrap tabscroll">${(p => tabRows(p.events, -1, riff, p.bars))(parseRiff(riff.text))}</div>` : ''}
     <div class="confirmbox"><div class="eyebrow">Your status</div>${statusSeg(id, kind === 'song' ? null : Object.assign({}, STATUS_LABEL, {done:'At tempo'}))}
       ${state.status !== 'done' ? `<button class="btn primary" data-act="status" data-id="${id}" data-v="done" type="button">${doneBtn}</button>` : `<p class="note">Confirmed ${state.confirmedAt ? esc(fmtDay(dk(new Date(state.confirmedAt)))) : ''}.</p>`}</div>
     <div class="field"><label for="songNote">Notes</label><textarea id="songNote" rows="3" data-act="note" data-id="${id}" placeholder="Fingering, tempo you can manage, tricky spots">${esc(state.note || '')}</textarea></div>`;
@@ -2615,7 +2668,7 @@ function pastePreview(){
   const r = importNotes(lp.paste ? lp.paste.text : '', {even: !!(lp.paste && lp.paste.even), sa: (lp.paste && lp.paste.sa) || 0});
   if (!r.notes) return `<span class="note">${esc(r.warn[0] || '')}</span>`;
   const p = parseRiff(r.text);
-  return `<div class="note">${r.notes} notes in ${r.systems} line${r.systems > 1 ? 's' : ''}${r.lyrics ? ` · ${r.lyrics} words of lyrics` : ''}${r.kind === 'sargam' ? ' · read as sargam, Sa = ' + SHARP[(lp.paste.sa || 0)] : r.kind === 'names' ? ' · read as note names' : r.timed ? ' · rhythm from the spacing' : ' · even notes'}${riffTechs(r.text).length ? ' · uses ' + riffTechs(r.text).map(t => TECHS[t].name.toLowerCase()).join(', ') : ''}${r.warn.length ? ' · ' + r.warn.map(esc).join(' ') : ''}</div><div class="tabwrap">${tabSvg(p.events, -1, {ts:4}, p.bars)}</div>${r.review && r.review.length ? `<details class="lyrev" ${r.review.some(x => !x.ok) ? 'open' : ''}><summary>Lyrics check: ${r.review.filter(x => x.ok).length} of ${r.review.length} lines fit${r.review.some(x => !x.ok) ? ', ' + r.review.filter(x => !x.ok).length + ' to check' : ''}</summary><ol>${r.review.map(x => `<li class="${x.ok ? '' : 'warn'}"><b>${esc(x.words)}</b><span>${esc(x.msg)}</span></li>`).join('')}</ol><p class="note">Each syllable gets a note; <code>–</code> under a note means the syllable before it is held. To move a word, edit its <code>&gt;</code> line in the notes after saving.</p></details>` : ''}`;
+  return `<div class="note">${r.notes} notes in ${r.systems} line${r.systems > 1 ? 's' : ''}${r.lyrics ? ` · ${r.lyrics} words of lyrics` : ''}${r.kind === 'sargam' ? ' · read as sargam, Sa = ' + SHARP[(lp.paste.sa || 0)] : r.kind === 'names' ? ' · read as note names' : r.timed ? ' · rhythm from the spacing' : ' · even notes'}${riffTechs(r.text).length ? ' · uses ' + riffTechs(r.text).map(t => TECHS[t].name.toLowerCase()).join(', ') : ''}${r.warn.length ? ' · ' + r.warn.map(esc).join(' ') : ''}</div><div class="tabwrap tabscroll">${tabRows(p.events, -1, {ts:4}, p.bars)}</div>${r.review && r.review.length ? `<details class="lyrev" ${r.review.some(x => !x.ok) ? 'open' : ''}><summary>Lyrics check: ${r.review.filter(x => x.ok).length} of ${r.review.length} lines fit${r.review.some(x => !x.ok) ? ', ' + r.review.filter(x => !x.ok).length + ' to check' : ''}</summary><ol>${r.review.map(x => `<li class="${x.ok ? '' : 'warn'}"><b>${esc(x.words)}</b><span>${esc(x.msg)}</span></li>`).join('')}</ol><p class="note">Each syllable gets a note; <code>–</code> under a note means the syllable before it is held. To move a word, edit its <code>&gt;</code> line in the notes after saving.</p></details>` : ''}`;
 }
 function pasteCard(){
   const P = lp.paste;
@@ -2685,7 +2738,7 @@ function viewLead(){
           <div class="keyctl" role="group" aria-label="Key (capo)"><span class="note">Key</span><button class="bpmbtn sm" data-act="lp-key" data-d="-1" type="button" aria-label="Key down">−</button><b class="mono" id="lpKey">${lpCapo() ? 'capo ' + lpCapo() : 'no capo'}</b><button class="bpmbtn sm" data-act="lp-key" data-d="1" type="button" aria-label="Key up">+</button></div>
           ${used.length ? `<span class="note" id="lpTechs">Uses ${used.map(t => TECHS[t].name.toLowerCase()).join(', ')}</span>` : '<span class="note" id="lpTechs"></span>'}
         </div>
-        <div class="tabwrap" id="tabBox">${tabSvg(parsed.events, -1, r, parsed.bars)}</div>
+        <div class="tabwrap tabscroll" id="tabBox">${tabRows(parsed.events, -1, r, parsed.bars)}</div>
         ${followBarHTML(r)}
       </section>
       <section class="card editor">
@@ -4249,6 +4302,7 @@ async function flStart(){
   cancelAnimationFrame(fl.raf); fl.raf = requestAnimationFrame(flLoop);
 }
 function flStop(silent){
+  tabUnfocus($('#tabBox'));
   if (!fl.on) return;
   fl.on = false; cancelAnimationFrame(fl.raf);
   try{ fl.an && sc.mic.src && sc.mic.src.disconnect(fl.an); }catch(e){}
@@ -4338,7 +4392,7 @@ function flPaint(){
     g.classList.toggle('on', i === fl.idx);
   });
   const g = $(`#tabBox .col[data-ev="${fl.idx}"]`), box = $('#tabBox');
-  if (g && box && g.getBBox){ const x = g.getBBox().x; if (x < box.scrollLeft + 40 || x > box.scrollLeft + box.clientWidth - 80) box.scrollLeft = Math.max(0, x - 80); }
+  if (g && box) tabFocus(box, g);
 }
 function flHint(){
   const e = fl.events[fl.idx]; if (!e || !AudioEng.ensure()) return;
@@ -4718,19 +4772,19 @@ function lpDraw(){
   if (cur){
     $$('#tabBox .col.on').forEach(g => g.classList.remove('on'));
     const g = $(`#tabBox .col[data-ev="${cur.idx}"]`);
-    if (g){ g.classList.add('on'); const box = $('#tabBox'); const x = g.getBBox ? g.getBBox().x : 0; if (box && (x < box.scrollLeft + 40 || x > box.scrollLeft + box.clientWidth - 80)) box.scrollLeft = Math.max(0, x - 60); }
+    if (g){ g.classList.add('on'); tabFocus($('#tabBox'), g); }
   }
   P.raf = requestAnimationFrame(lpDraw);
 }
 function lpStop(){
   if (!lp.playing) return;
   lp.playing = false; clearInterval(P.timer); cancelAnimationFrame(P.raf); P.queue = []; P.endAt = 0;
-  syncLpBtn(); $$('#tabBox .col.on').forEach(g => g.classList.remove('on'));
+  syncLpBtn(); $$('#tabBox .col.on').forEach(g => g.classList.remove('on')); tabUnfocus($('#tabBox'));
 }
 function syncLpBtn(){ const b = $('#lpPlay'); if (!b) return; b.classList.toggle('stop', lp.playing); b.innerHTML = lp.playing ? stopIcon : playIcon; b.setAttribute('aria-label', lp.playing ? 'Stop' : 'Play'); }
 function lpRetab(){
   const {r, text, bpm} = lpCurrent(); const parsed = parseRiff(text);
-  const box = $('#tabBox'); if (box) box.innerHTML = tabSvg(parsed.events, -1, r, parsed.bars);
+  const box = $('#tabBox'); if (box) box.innerHTML = tabRows(parsed.events, -1, r, parsed.bars);
   const er = $('#riffErr'); if (er) er.innerHTML = parsed.errors.slice(0, 3).map(esc).join('<br>');
   const sv = $('#riffSave'); if (sv) sv.disabled = !lp.dirty;
   const v = $('#lpBpm'); if (v) v.textContent = bpm;
