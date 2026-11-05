@@ -487,6 +487,16 @@ ul.mvsongs{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .factrow{display:flex;flex-wrap:wrap;gap:8px 22px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2)}
 .factrow span{display:grid;gap:2px;font-size:14px}
 .factrow b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.sheetwrap{background:var(--surface-2);border:1px solid var(--line);border-radius:14px;padding:14px 16px;overflow-x:auto}
+.sheetwrap.scroll{max-height:min(56vh,520px);overflow-y:auto;scroll-behavior:smooth}
+.sheet{display:grid;gap:10px;font:15px/1.35 var(--f-mono);white-space:pre}
+.shsec{font:600 12px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-top:6px}
+.shl{padding:4px 8px;border-radius:8px;transition:opacity .25s,background-color .25s}
+.shc b{color:var(--accent);font-weight:700;border-radius:4px}
+.shc b.on{background:var(--accent);color:var(--accent-ink,#1a1208);padding:0 3px;margin:0 -3px}
+.shy{color:var(--ink)}
+.sheetwrap.playing .shl{opacity:.45}
+.sheetwrap.playing .shl.cur{opacity:1;background:color-mix(in oklab,var(--accent) 10%,transparent)}
 .lyrev{margin-top:10px;font-size:14px}
 .lyrev summary{cursor:pointer;font-weight:600}
 .lyrev ol{margin:8px 0;padding-left:20px;display:grid;gap:4px}
@@ -900,6 +910,26 @@ const SONGS = [
 ];
 
 // Lead library. tech = techniques the riff needs; it appears on your path once you have learned them.
+// Side A: a direct chord page for each song (from a web search, Nov 2026). Songs not listed fall back to a search.
+const CHORD_URL = {
+  'three-little-birds':'https://tabs.ultimate-guitar.com/tab/bob-marley/three-little-birds-chords-459333',
+  'zombie':'https://tabs.ultimate-guitar.com/tab/the-cranberries/zombie-chords-844902',
+  'sweet-home-alabama':'https://tabs.ultimate-guitar.com/l/lynyrd_skynyrd/sweet_home_alabama_crd.htm',
+  'stand-by-me':'https://tabs.ultimate-guitar.com/tab/ben-e-king/stand-by-me-chords-1041639',
+  'horse-with-no-name':'https://tabs.ultimate-guitar.com/a/america/a_horse_with_no_name_crd.htm',
+  'jet-plane':'https://tabs.ultimate-guitar.com/tab/john-denver/leaving-on-a-jet-plane-chords-32979',
+  'brown-eyed-girl':'https://tabs.ultimate-guitar.com/tab/van-morrison/brown-eyed-girl-chords-1846041',
+  'wagon-wheel':'https://tabs.ultimate-guitar.com/tab/old-crow-medicine-show/wagon-wheel-chords-1055498',
+  'behind-blue-eyes':'https://tabs.ultimate-guitar.com/t/the_who/behind_blue_eyes_crd.htm',
+  'heart-of-gold':'https://tabs.ultimate-guitar.com/tab/neil-young/heart-of-gold-chords-1737895',
+  'bad-moon-rising':'https://tabs.ultimate-guitar.com/tab/creedence-clearwater-revival/bad-moon-rising-chords-969574',
+  'riptide':'https://tabs.ultimate-guitar.com/tab/vance-joy/riptide-chords-1237247',
+  'wonderwall':'https://tabs.ultimate-guitar.com/tab/oasis/wonderwall-chords-39144',
+  'let-it-be':'https://tabs.ultimate-guitar.com/tab/the-beatles/let-it-be-chords-110561',
+  'tum-hi-ho-strum':'https://tabs.ultimate-guitar.com/tab/misc-soundtrack/aashiqui-2-tum-hi-ho-chords-1404555',
+  'wish-you-were-here':'https://tabs.ultimate-guitar.com/tab/pink-floyd/wish-you-were-here-chords-1088963',
+};
+
 // Side B. kind: 'etude' (original exercise, full tab), 'tune' (public-domain melody, full tab),
 // 'song' (copyrighted: a direct link to a tab and a lesson search, plus what to focus on). tech sets the movement; mv overrides it upward.
 const LEAD = [
@@ -1364,7 +1394,51 @@ function parseChordName(tok){
   if (!(q in QUAL)) return null;
   return {root: NOTE_IX[m[1] + (m[2] || '')], q: QUAL[q], text: tok.trim()};
 }
+/* A chord sheet as tab sites print it: a line of chords above each line of lyrics (or [Am]inline chords).
+   Returns lines [{chords:[{c, col, tok}], lyric}] plus every chord in order. A line counts as chords when
+   every word on it is a chord name (repeat marks like x2 and bar lines are allowed). */
+function chordLineTokens(l){
+  const toks = []; l.replace(/\S+/g, (w, at) => { toks.push({w, at}); return w; });
+  if (!toks.length) return null;
+  const out = [];
+  for (const t of toks){
+    const w = t.w.replace(/^[(\[|]+|[)\]|,]+$/g, '');
+    if (!w || /^[x×]\d+$/i.test(w) || /^[|\-–—.:/%]+$/.test(w) || /^\d+$/.test(w) || /^n\.?c\.?$/i.test(w)) continue;
+    const c = parseChordName(w); if (!c || c.q === null) return null;
+    out.push({c, col: t.at, tok: w});
+  }
+  return out.length ? out : null;
+}
+function parseChordSheet(text){
+  const lines = String(text || '').replace(/\t/g, '    ').split(/\r?\n/);
+  const out = []; let lyricLines = 0, chordLines = 0;
+  for (let i = 0; i < lines.length; i++){
+    const l = lines[i]; if (!l.trim()) continue;
+    if (/^\s*\[?(intro|verse|chorus|pre-chorus|bridge|outro|solo|interlude|instrumental|refrain|hook|antara|mukhda|sthayi|tag)\b[^\]]*\]?:?\s*$/i.test(l)){ out.push({section: l.trim().replace(/^\[|\]$/g, '').replace(/:$/, '')}); continue; }
+    if (/\[[A-G][^\]]*\]/.test(l)){   // inline [Am]chords
+      const chords = []; let lyric = ''; l.replace(/\[([^\]]+)\]|([^\[]+)/g, (m, ch, tx) => { if (ch){ const c = parseChordName(ch.trim()); if (c && c.q !== null) chords.push({c, col: lyric.length, tok: ch.trim()}); } else lyric += tx; return m; });
+      if (chords.length){ out.push({chords, lyric: lyric.replace(/\s+$/, '')}); chordLines++; if (lyric.trim()) lyricLines++; continue; }
+    }
+    const ch = chordLineTokens(l);
+    if (ch){
+      chordLines++;
+      const nx = lines[i + 1];
+      if (nx != null && nx.trim() && !chordLineTokens(nx) && !/^\s*\[?(intro|verse|chorus|bridge|outro|solo)/i.test(nx)){ out.push({chords: ch, lyric: nx.replace(/\s+$/, '')}); lyricLines++; i++; }
+      else out.push({chords: ch, lyric: ''});
+    } else if (out.length || /\w/.test(l)) { out.push({chords: [], lyric: l.replace(/\s+$/, '')}); lyricLines++; }
+  }
+  const flat = []; out.forEach(x => (x.chords || []).forEach(c => flat.push(c.c)));
+  return {lines: out, flat, lyricLines, chordLines};
+}
+// chord sheet → the shapes you'd play with this capo, the progression, and lines that point into it
+function buildSheet(sh, capo, beats){
+  const seq = [];
+  const sheet = sh.lines.map(L => L.section ? {sec: L.section} : {ly: L.lyric, ch: L.chords.map(x => { const s = shapeFor(x.c.root - capo, x.c.q); if (!s) return null; seq.push([s.name, beats]); return {n: s.name, col: x.col, k: seq.length - 1, orig: x.tok}; }).filter(Boolean)});
+  return {sheet, seq};
+}
 function parseSheet(text){
+  const sh = parseChordSheet(text);
+  if (sh.chordLines && sh.lyricLines) return {chords: sh.flat, bad: [], sheet: sh};   // a chord sheet with lyrics
   const chords = [], bad = [];
   for (const tok of String(text || '').split(/[\s,|\-–—>]+/).filter(Boolean)){
     if (/^[x×]\d+$/i.test(tok) || /^\d+$/.test(tok)) continue;
@@ -2551,6 +2625,7 @@ function capoHTML(){
     <div style="overflow-x:auto"><table class="ptable capotable"><thead><tr><th>Capo</th><th>Shapes you'd play</th><th style="text-align:right">Result</th></tr></thead><tbody>${rows}</tbody></table></div>
     <p class="note">Red chips are shapes in the app you haven't learned yet; a <b>*</b> means a simplified version (Cmaj7 played as C, for example).</p>
     <div class="diagrams">${[...new Set(seq)].map(n => chordSvg(n, 0.95)).join('')}</div>
+    ${parsed.sheet ? `<div class="card inner"><div class="sec-h"><h4>Chord sheet with capo ${c.capo}</h4><span class="note">${parsed.sheet.lyricLines} lines of lyrics kept</span></div><div class="sheetwrap">${sheetHTML(buildSheet(parsed.sheet, c.capo, 4).sheet)}</div></div>` : ''}
     ${seq.length >= 2 && !sel.none ? `<div class="card inner">
       <div class="sec-h"><h4>Add it to Side A</h4><span class="note">It joins your journey with readiness worked out like any other song</span></div>
       <div class="ctrls">
@@ -2565,12 +2640,25 @@ function capoHTML(){
   }
   return `
   <section class="stage">
-    <div class="field"><label for="cfText">Chords, in order, as they appear on a chord sheet</label>
-      <textarea id="cfText" data-act="cftext" rows="3" spellcheck="false" placeholder="${example}">${esc(c.text)}</textarea></div>
+    <div class="field"><label for="cfText">Chords in order, or a whole chord sheet (chords above the lyrics, as tab sites show them)</label>
+      <textarea id="cfText" data-act="cftext" rows="${c.text.split('\n').length > 3 ? 10 : 3}" spellcheck="false" placeholder="${example}" class="${c.text.includes('\n') ? 'mono' : ''}">${esc(c.text)}</textarea></div>
+    <p class="note">Paste a chord sheet and the lyrics come along: the Strum coach then shows the song line by line and follows along as you play.</p>
     <div class="row"><span class="note">Try:</span>${[['Pehla Nasha', 'F Dm C Bb'], ['Tum Hi Ho (record key)', 'Fm Db Ab Eb'], ['Hotel California', 'Bm F# A E G D Em F#']].map(([t, ch]) => `<button class="btn sm ghost" type="button" data-act="cf-example" data-v="${esc(ch)}" data-t="${esc(t)}">${esc(t)}</button>`).join('')}</div>
     ${parsed.bad.length ? `<p class="err">Not recognised: ${parsed.bad.slice(0, 6).map(esc).join(', ')}. Diminished and augmented chords aren't supported.</p>` : ''}
     ${results}
   </section>`;
+}
+/* A chord sheet: chords sit above the syllable they land on, lyrics underneath. Each chord carries its place
+   in the progression (data-k), so the Strum coach can light it up and scroll its line into view. */
+function sheetHTML(sheet, id){
+  if (!sheet || !sheet.length) return '';
+  return `<div class="sheet" id="${id || ''}">${sheet.map(L => {
+    if (L.sec) return `<div class="shsec">${esc(L.sec)}</div>`;
+    let row = '', at = 0;
+    (L.ch || []).slice().sort((a, b) => a.col - b.col).forEach(c => { const col = Math.max(c.col, at + (at ? 1 : 0)); row += ' '.repeat(col - at) + `<b data-k="${c.k}">${esc(c.n)}</b>`; at = col + c.n.length; });
+    const ks = (L.ch || []).map(c => c.k).join(',');
+    return `<div class="shl" data-ks="${ks}">${L.ch && L.ch.length ? `<div class="shc">${row}</div>` : ''}${L.ly ? `<div class="shy">${esc(L.ly)}</div>` : ''}</div>`;
+  }).join('')}</div>`;
 }
 function statusPill(id, r){
   const stt = songState(id).status;
@@ -2614,7 +2702,8 @@ function songDrawer(id){
     </div>
     <div class="row">
       <a class="btn" href="${ytq((s.artist || '') + ' ' + s.title)}" target="_blank" rel="noopener">Find the track</a>
-      ${s.practice ? '' : `<a class="btn" href="${ugq(s.title + ' ' + (s.artist || '').split(' / ')[0])}" target="_blank" rel="noopener">Find chord charts</a>`}
+      ${s.practice ? '' : CHORD_URL[s.id] ? `<a class="btn" href="${CHORD_URL[s.id]}" target="_blank" rel="noopener">Chords on Ultimate Guitar</a>` : `<a class="btn" href="${ugq(s.title + ' ' + (s.artist || '').split(' (')[0])}" target="_blank" rel="noopener">Find chord charts</a>`}
+      ${s.practice ? '' : `<a class="btn" href="${ytq((s.artist || '').split(' (')[0] + ' ' + s.title + ' guitar lesson')}" target="_blank" rel="noopener">Video lesson</a>`}
       <button class="btn" data-act="drill-song" data-id="${s.id}" type="button">Drill progression</button>
       <button class="btn" data-act="sc-open" data-id="${s.id}" type="button">Strum coach</button>
     </div>
@@ -3686,6 +3775,17 @@ function timeToSlot(run, t){ if (run.rec) return recTimeToSlot(run, t); let a = 
 function slotWin(run, k){ return Math.min(0.12, 0.45 * slotDur(run, k) * (run.swing ? 0.72 : 1)); }
 function slotDur(run, k){ if (run.rec){ const b = Math.floor(k / run.sub); return (recSlotTime(run, (b + 1) * run.sub) - recSlotTime(run, b * run.sub)) / run.sub; } let a = run.anchors[0]; for (const x of run.anchors) if (x.slot <= k) a = x; return a.dur; }
 function chordAtBeat(run, beat){ if (run.chordAt) return run.chordAt(beat); let b = ((beat % run.loopBeats) + run.loopBeats) % run.loopBeats; for (const [c, n] of run.seq){ if (b < n) return c; b -= n; } return run.seq[0][0]; }
+function seqIdxAtBeat(run, beat){ let b = ((beat % run.loopBeats) + run.loopBeats) % run.loopBeats; for (let i = 0; i < run.seq.length; i++){ if (b < run.seq[i][1]) return i; b -= run.seq[i][1]; } return 0; }
+// chord sheet: light the chord being played, keep its line in the middle of the box
+function sheetFollow(k){
+  const box = $('#scSheetBox'); if (!box || sc.sheetK === k) return; sc.sheetK = k;
+  box.querySelectorAll('b.on').forEach(x => x.classList.remove('on'));
+  const b = box.querySelector(`b[data-k="${k}"]`); if (!b) return; b.classList.add('on');
+  const line = b.closest('.shl'); box.querySelectorAll('.shl.cur').forEach(x => x !== line && x.classList.remove('cur')); line.classList.add('cur'); box.classList.add('playing');
+  const top = line.offsetTop - box.offsetTop - (box.clientHeight - line.offsetHeight) / 2;
+  if (box.scrollHeight > box.clientHeight) box.scrollTo({top: Math.max(0, top), behavior: 'smooth'});
+}
+function sheetUnfollow(){ sc.sheetK = null; const box = $('#scSheetBox'); if (box){ box.classList.remove('playing'); box.querySelectorAll('b.on').forEach(x => x.classList.remove('on')); } }
 function chordAtBeatNext(run, beat){
   if (run.chordAt){ const now = run.chordAt(beat); for (let i = 1; i <= 64; i++){ const c = run.chordAt(beat + i); if (c !== now) return {now, next: c, left: i}; } return {now, next: now, left: 64}; }
   let b = ((beat % run.loopBeats) + run.loopBeats) % run.loopBeats; for (let i = 0; i < run.seq.length; i++){ const [, n] = run.seq[i]; if (b < n) return {now: run.seq[i][0], next: run.seq[(i + 1) % run.seq.length][0], left: n - b}; b -= n; } return {now: run.seq[0][0], next: run.seq[0][0], left: 1}; }
@@ -3853,6 +3953,7 @@ function runStats(run){
   return {accN, accOk, exp, good, acc: exp ? good / exp : 0, mean, sd, onAvg: avg(onb), offAvg: avg(off), miss: Object.keys(run.missed).length, extras, bars: run.bars.length, clean: run.bars.filter(b => b.clean).length, streak, recent: hits.slice(-16)};
 }
 function scStop(){
+  sheetUnfollow();
   const run = sc.run; if (!run) return;
   clearInterval(run.timer); cancelAnimationFrame(run.raf);
   if (run.mode === 'mp3') Player.stop();
@@ -3885,6 +3986,7 @@ function scDraw(){
   const show = c => c === 'N' ? '–' : c;
   const nn = $('#scNow'); if (nn && nn.textContent !== show(ch.now)){ nn.textContent = show(ch.now); const dg = $('#scDiag'); if (dg) dg.innerHTML = SHAPES[ch.now] ? chordSvg(ch.now, 1.1) : ''; }
   const nx = $('#scNext'); if (nx) nx.textContent = show(ch.next);
+  if (!run.chordAt) sheetFollow(seqIdxAtBeat(run, beat));
   // song map: light up the bar being played
   if (run.chart && run.absBeat){
     const ab = cur < 0 && run.rec && !run.loop ? Math.floor(run.chart.phase + cur / run.sub) : run.absBeat(Math.floor(Math.max(0, cur) / run.sub));
@@ -4141,7 +4243,7 @@ function viewStrum(){
   <div class="scgrid">
     <aside class="card sccontrols">
       <div class="field"><label>Play</label><div class="seg" role="group" aria-label="Source"><button type="button" data-act="sc-src" data-v="song" aria-pressed="${sc.src === 'song'}">A song</button><button type="button" data-act="sc-src" data-v="pattern" aria-pressed="${sc.src === 'pattern'}">Just a pattern</button></div></div>
-      ${sc.src === 'song' ? `<div class="field"><label for="scSong">Song</label><select id="scSong" data-act="sc-song">${songOpts}</select></div>`
+      ${sc.src === 'song' ? `<div class="field"><label for="scSong">Song</label><select id="scSong" data-act="sc-song">${songOpts}</select></div><button class="btn sm ghost" type="button" data-act="sc-paste">Paste a chord sheet</button>`
         : `<div class="field"><label for="scChords">Chords</label><input type="text" id="scChords" data-act="sc-chords" value="${esc(sc.chords)}" spellcheck="false"></div>
            <div class="row"><div class="field"><label for="scCb">Beats each</label><select id="scCb" data-act="sc-cb">${[8,4,2].map(b => `<option ${Number(sc.cbeats) === b ? 'selected' : ''}>${b}</option>`).join('')}</select></div><div class="field"><label for="scBpm">Tempo</label><input type="number" id="scBpm" min="30" max="220" value="${sc.bpm}" data-act="sc-bpm"></div></div>`}
       <div class="field"><label for="scPat">Strum pattern</label><select id="scPat" data-act="sc-pat"><option value="">${s ? 'Song’s pattern (' + esc(PATTERNS[songPatId(s)].name) + ')' : 'Old faithful'}</option>${Object.entries(PATTERNS).map(([k, p]) => `<option value="${k}" ${sc.patOverride === k ? 'selected' : ''}>${esc(p.name)} · ${p.slots.split('').map(c => SLOT_GLYPH[c]).join(' ')}</option>`).join('')}</select></div>
@@ -4180,6 +4282,7 @@ function viewStrum(){
       ${micOn ? '' : '<p class="note">The microphone is off, so the track plays but strums aren’t scored.</p>'}
     </section>
   </div>
+  ${s && s.sheet ? `<section class="card"><div class="sec-h"><h3>Chord sheet</h3><span class="note">${sc.track === 'mp3' ? 'Follows the backing track; with a recording, read along at your own pace.' : 'The chord being played lights up, and the sheet scrolls with you.'}</span></div><div class="sheetwrap scroll" id="scSheetBox">${sheetHTML(s.sheet)}</div></section>` : ''}
   ${songMapHTML()}
   ${last ? `<section class="card result">
     <div class="sec-h"><h3>That run</h3><span class="note">${esc(last.title)}${last.sec ? ' · ' + esc(last.sec) : ''} · ${last.bpm} bpm (${Math.round(last.speed * 100)}%) · ${last.bars} bars</span></div>
@@ -4854,15 +4957,21 @@ document.addEventListener('click', e => {
     case 'omlog': { const inp = $('#manualCount'); const n = Number(inp.value); if (!inp.value || !(n >= 0) || n > 200){ toast('Enter a count between 0 and 200.'); return; } addDrill(om.pair, Math.round(n)); toast(`Saved ${Math.round(n)} for ${pairLabel(om.pair)}.`); refreshChanges(); break; }
     case 'lib': ui.lib[el.dataset.k] = el.dataset.v; render(); break;
     case 'libtab': ui.lib.tab = el.dataset.v; render(); break;
+    case 'sc-paste': ui.lib.tab = 'capo'; go('library'); setTimeout(() => { const t = $('#cfText'); if (t) t.focus(); }, 50); break;
     case 'cf-capo': ui.cf.capo = Number(el.dataset.v); render(); break;
     case 'cf-example': ui.cf.text = el.dataset.v; ui.cf.title = el.dataset.t.replace(/ \(.*\)$/, ''); ui.cf.capo = null; render(); break;
     case 'cf-add': {
       const c = ui.cf; const title = ($('#cfTitle') || {}).value || c.title;
       if (!String(title).trim()){ toast('Give the song a title first.'); const t = $('#cfTitle'); if (t) t.focus(); return; }
-      const seq = parseSheet(c.text).chords.map(ch => shapeFor(ch.root - c.capo, ch.q)).filter(Boolean).map(x => [x.name, Number(c.beats) || 4]);
+      const ps = parseSheet(c.text), beats = Number(c.beats) || 4;
+      const seq = [];
+      let sheet = null;
+      if (ps.sheet){ const b = buildSheet(ps.sheet, c.capo, beats); sheet = b.sheet; seq.push(...b.seq); }   // keep the lyrics
+      else ps.chords.map(ch => shapeFor(ch.root - c.capo, ch.q)).filter(Boolean).forEach(x => seq.push([x.name, beats]));
+      if (!seq.length){ toast('No chords found to add.'); return; }
       const bpm = clamp(Number(c.bpm) || 90, 30, 220);
       const id = 'my-' + Date.now().toString(36);
-      store.data.mysongs.items.push({id, title:String(title).trim(), artist:String(c.artist || '').trim(), seq, bpm, capo:c.capo, ts:4, orig:c.text.trim()});
+      store.data.mysongs.items.push(Object.assign({id, title:String(title).trim(), artist:String(c.artist || '').trim(), seq, bpm, capo:c.capo, ts:4}, sheet ? {sheet} : {orig:c.text.trim()}));
       touch('mysongs');
       ui.cf = {text:'', capo:null, title:'', artist:'', bpm:90, beats:4};
       toast(`Added to Side A as ${trackNo(id)}.`);
